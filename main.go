@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
+	"net/http"
+	"os"
 )
 
 const (
@@ -31,6 +35,30 @@ func main() {
 		if err != nil {
 			log.Panic("Can't read udp", err)
 		}
-		fmt.Println(string(buf[0:n]))
+
+		var res Gateway
+		err = json.Unmarshal(buf[0:n], &res)
+		if err != nil {
+			log.Println(err)
+		}
+
+		// call ifttt webhook with switch
+		if res.Model == "switch" {
+			data := []byte(res.Data.(string))
+			var button Switch
+			err = json.Unmarshal(data, &button)
+			if err != nil {
+				log.Println(err)
+			}
+			fmt.Println(button)
+			req := []byte(`{"value1": "test", "value2": "bla", "value3": "toto"}`)
+			if button.Status == "click" {
+				resp, err := http.Post("https://maker.ifttt.com/trigger/button_pressed/with/key/"+os.Getenv("IFTTT_KEY"), "application/json", bytes.NewBuffer(req))
+				if err != nil {
+					log.Println(err)
+				}
+				defer resp.Body.Close()
+			}
+		}
 	}
 }
