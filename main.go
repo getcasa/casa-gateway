@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/ItsJimi/casa/devices"
 	"log"
 	"net"
 	"net/http"
@@ -36,11 +37,13 @@ func main() {
 			log.Panic("Can't read udp", err)
 		}
 
-		var res Gateway
+		var res Event
 		err = json.Unmarshal(buf[0:n], &res)
 		if err != nil {
 			log.Println(err)
 		}
+
+		fmt.Println(res)
 
 		// call ifttt webhook with switch
 		if res.Model == "switch" {

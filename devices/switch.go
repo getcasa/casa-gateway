@@ -1,4 +1,4 @@
-package main
+package devices
 
 // Switch define xiaomi switch button
 type Switch struct {

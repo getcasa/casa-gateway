@@ -1,7 +1,7 @@
 package main
 
-// Gateway define xiaomi gateway
-type Gateway struct {
+// Event define xiaomi gateway events
+type Event struct {
 	CMD     string      `json:"cmd"`
 	Model   string      `json:"model"`
 	SID     string      `json:"sid"`
