@@ -48,7 +48,7 @@ func main() {
 		// call ifttt webhook with switch
 		if res.Model == "switch" {
 			data := []byte(res.Data.(string))
-			var button Switch
+			var button devices.Switch
 			err = json.Unmarshal(data, &button)
 			if err != nil {
 				log.Println(err)
