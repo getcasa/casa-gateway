@@ -1,4 +1,4 @@
-package main
+package gateway
 
 // IFTTT define request for ifttt webhook
 type IFTTT struct {

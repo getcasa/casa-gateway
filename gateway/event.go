@@ -1,4 +1,4 @@
-package main
+package gateway
 
 // Event define xiaomi gateway events
 type Event struct {
