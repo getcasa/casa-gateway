@@ -1,4 +1,4 @@
-module github.com/ItsJimi/casa
+module github.com/ItsJimi/casa-gateway
 
 require (
 	github.com/fatih/color v1.7.0 // indirect

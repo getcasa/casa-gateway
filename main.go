@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ItsJimi/casa/cmd"
+	"github.com/ItsJimi/casa-gateway/cmd"
 )
 
 func main() {

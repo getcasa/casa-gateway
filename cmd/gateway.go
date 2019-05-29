@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/ItsJimi/casa/gateway"
+	"github.com/ItsJimi/casa-gateway/gateway"
 	"github.com/spf13/cobra"
 )
 

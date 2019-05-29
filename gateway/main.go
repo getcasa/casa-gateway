@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/ItsJimi/casa/gateway/devices"
+	"github.com/ItsJimi/casa-gateway/gateway/devices"
 )
 
 const (
