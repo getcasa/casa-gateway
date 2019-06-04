@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"plugin"
+	"reflect"
 
 	"github.com/spf13/cobra"
 )
@@ -48,7 +49,11 @@ var startCmd = &cobra.Command{
 		onStart.(func())()
 		for {
 			res := onData.(func() interface{})()
-			fmt.Println(res)
+			if res != nil {
+				val := reflect.ValueOf(res).Elem()
+
+				fmt.Println(val.Field(0))
+			}
 		}
 		// onStop.(func())()
 	},
