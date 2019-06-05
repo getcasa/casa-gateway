@@ -9,3 +9,5 @@ require (
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3 // indirect
 )
+
+replace github.com/getcasa/sdk v0.0.0-20190603120433-a6275a3eed49 => ../casa-sdk
