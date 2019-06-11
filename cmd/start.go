@@ -61,8 +61,8 @@ func pluginFromName(name string) *Plugin {
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "",
-	Long:  "",
+	Short: "Start gateway to get data from external smart things",
+	Long:  "Start gateway to get data from external smart things like Xiaomi Gateway, etc.",
 	Run: func(cmd *cobra.Command, args []string) {
 		findPluginFile()
 
