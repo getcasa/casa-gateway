@@ -18,9 +18,9 @@ type Plugin struct {
 	File       string
 	Config     *sdk.Configuration
 	OnStart    plugin.Symbol
-	OnStop     plugin.Symbol
-	OnData     plugin.Symbol
-	CallAction plugin.Symbol
+	OnStop     func()
+	OnData     func() interface{}
+	CallAction func(string, []byte)
 }
 
 var plugins []Plugin
@@ -92,16 +92,16 @@ var startCmd = &cobra.Command{
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			plugins[i].OnStop = onStop
+			plugins[i].OnStop = onStop.(func())
 
 			onData, err := plug.Lookup("OnData")
 			if err == nil {
-				plugins[i].OnData = onData
+				plugins[i].OnData = onData.(func() interface{})
 			}
 
 			callAction, err := plug.Lookup("CallAction")
 			if err == nil {
-				plugins[i].CallAction = callAction
+				plugins[i].CallAction = callAction.(func(string, []byte))
 			}
 
 			plugins[i].OnStart.(func())()
@@ -114,16 +114,16 @@ var startCmd = &cobra.Command{
 				wg.Add(1)
 				go func(plugin Plugin) {
 					if plugin.OnData != nil {
-						res := plugin.OnData.(func() interface{})()
+						res := plugin.OnData()
 						if res != nil {
 							val := reflect.ValueOf(res).Elem()
 							if val.Field(1).String() == "click" && val.Field(0).String() == "158d00019f84c6" {
 								if pluginFromName("request").CallAction != nil {
-									pluginFromName("request").CallAction.(func(string, []byte))("get", []byte(`{"Link": "http://192.168.1.131/toggle"}`))
+									pluginFromName("request").CallAction("get", []byte(`{"Link": "http://192.168.1.131/toggle"}`))
 								}
 							} else if val.Field(1).String() == "double_click" && val.Field(0).String() == "158d00019f84c6" {
 								if plugins[0].CallAction != nil {
-									plugins[0].CallAction.(func(string, []byte))("get", []byte(`{"Link": "http://192.168.1.135/toggle"}`))
+									plugins[0].CallAction("get", []byte(`{"Link": "http://192.168.1.135/toggle"}`))
 								}
 							}
 							fmt.Println(val.Field(0))
