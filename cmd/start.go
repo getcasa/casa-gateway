@@ -7,6 +7,7 @@ import (
 	"plugin"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/getcasa/sdk"
 	"github.com/spf13/cobra"
@@ -46,6 +47,16 @@ func findPluginFile() {
 	if err != nil {
 		return
 	}
+}
+
+func pluginFromName(name string) *Plugin {
+	for _, plugin := range plugins {
+		if plugin.Name == name {
+			return &plugin
+		}
+	}
+
+	return nil
 }
 
 var startCmd = &cobra.Command{
@@ -98,24 +109,33 @@ var startCmd = &cobra.Command{
 		}
 
 		for {
-			for i := 0; i < len(plugins); i++ {
-				plugin := plugins[i]
-				if plugin.OnData != nil {
-					res := plugin.OnData.(func() interface{})()
-					if res != nil {
-						val := reflect.ValueOf(res).Elem()
-						if val.Field(1).String() == "click" && val.Field(0).String() == "158d00019f84c6" {
-							if plugins[0].CallAction != nil {
-								plugins[0].CallAction.(func(string, []byte))("get", []byte(`{"Link": "http://192.168.1.131/toggle"}`))
+			var wg sync.WaitGroup
+			for _, plugin := range plugins {
+				wg.Add(1)
+				go func(plugin Plugin) {
+					if plugin.OnData != nil {
+						res := plugin.OnData.(func() interface{})()
+						if res != nil {
+							val := reflect.ValueOf(res).Elem()
+							if val.Field(1).String() == "click" && val.Field(0).String() == "158d00019f84c6" {
+								if pluginFromName("request").CallAction != nil {
+									pluginFromName("request").CallAction.(func(string, []byte))("get", []byte(`{"Link": "http://192.168.1.131/toggle"}`))
+								}
+							} else if val.Field(1).String() == "double_click" && val.Field(0).String() == "158d00019f84c6" {
+								if plugins[0].CallAction != nil {
+									plugins[0].CallAction.(func(string, []byte))("get", []byte(`{"Link": "http://192.168.1.135/toggle"}`))
+								}
 							}
+							fmt.Println(val.Field(0))
+							// for i := 0; i < val.NumField(); i++ {
+							// 	fmt.Println(val.Field(i))
+							// }
 						}
-						fmt.Println(val.Field(0))
-						// for i := 0; i < val.NumField(); i++ {
-						// 	fmt.Println(val.Field(i))
-						// }
 					}
-				}
+					defer wg.Done()
+				}(plugin)
 			}
+			wg.Wait()
 		}
 		// onStop.(func())()
 	},
