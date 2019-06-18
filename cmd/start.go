@@ -17,13 +17,15 @@ type Plugin struct {
 	Name       string
 	File       string
 	Config     *sdk.Configuration
-	OnStart    plugin.Symbol
+	OnStart    func()
 	OnStop     func()
 	OnData     func() interface{}
 	CallAction func(string, []byte)
+	Stop       bool
 }
 
 var plugins []Plugin
+var wg sync.WaitGroup
 
 func init() {
 	rootCmd.AddCommand(startCmd)
@@ -40,6 +42,7 @@ func findPluginFile() {
 			plugins = append(plugins, Plugin{
 				Name: strings.Replace(info.Name(), ".so", "", -1),
 				File: path,
+				Stop: false,
 			})
 		}
 		return nil
@@ -57,6 +60,33 @@ func pluginFromName(name string) *Plugin {
 	}
 
 	return nil
+}
+
+func worker(plugin Plugin) {
+	if plugin.Stop == true {
+		wg.Done()
+		return
+	}
+	if plugin.OnData != nil {
+		res := plugin.OnData()
+		if res != nil {
+			val := reflect.ValueOf(res).Elem()
+			if val.Field(1).String() == "click" && val.Field(0).String() == "158d00019f84c6" {
+				if pluginFromName("request").CallAction != nil {
+					pluginFromName("request").CallAction("get", []byte(`{"Link": "http://192.168.1.131/toggle"}`))
+				}
+			} else if val.Field(1).String() == "double_click" && val.Field(0).String() == "158d00019f84c6" {
+				if plugins[0].CallAction != nil {
+					plugins[0].CallAction("get", []byte(`{"Link": "http://192.168.1.135/toggle"}`))
+				}
+			}
+			fmt.Println(val.Field(0))
+			// for i := 0; i < val.NumField(); i++ {
+			// 	fmt.Println(val.Field(i))
+			// }
+		}
+	}
+	go worker(plugin)
 }
 
 var startCmd = &cobra.Command{
@@ -80,12 +110,20 @@ var startCmd = &cobra.Command{
 			}
 			plugins[i].Config = conf.(*sdk.Configuration)
 
+			swi, err := plug.Lookup("Test")
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+
+			fmt.Println(swi)
+
 			onStart, err := plug.Lookup("OnStart")
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			plugins[i].OnStart = onStart
+			plugins[i].OnStart = onStart.(func())
 
 			onStop, err := plug.Lookup("OnStop")
 			if err != nil {
@@ -104,39 +142,17 @@ var startCmd = &cobra.Command{
 				plugins[i].CallAction = callAction.(func(string, []byte))
 			}
 
-			plugins[i].OnStart.(func())()
+			plugins[i].OnStart()
 			fmt.Println(plugins[i].Name)
 		}
 
-		for {
-			var wg sync.WaitGroup
-			for _, plugin := range plugins {
-				wg.Add(1)
-				go func(plugin Plugin) {
-					if plugin.OnData != nil {
-						res := plugin.OnData()
-						if res != nil {
-							val := reflect.ValueOf(res).Elem()
-							if val.Field(1).String() == "click" && val.Field(0).String() == "158d00019f84c6" {
-								if pluginFromName("request").CallAction != nil {
-									pluginFromName("request").CallAction("get", []byte(`{"Link": "http://192.168.1.131/toggle"}`))
-								}
-							} else if val.Field(1).String() == "double_click" && val.Field(0).String() == "158d00019f84c6" {
-								if plugins[0].CallAction != nil {
-									plugins[0].CallAction("get", []byte(`{"Link": "http://192.168.1.135/toggle"}`))
-								}
-							}
-							fmt.Println(val.Field(0))
-							// for i := 0; i < val.NumField(); i++ {
-							// 	fmt.Println(val.Field(i))
-							// }
-						}
-					}
-					defer wg.Done()
-				}(plugin)
-			}
-			wg.Wait()
+		for _, plugin := range plugins {
+			wg.Add(1)
+			go worker(plugin)
 		}
-		// onStop.(func())()
+		wg.Wait()
+		for _, plugin := range plugins {
+			plugin.OnStop()
+		}
 	},
 }
