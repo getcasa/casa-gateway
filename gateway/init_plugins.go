@@ -81,8 +81,8 @@ func worker(plugin Plugin) {
 	go worker(plugin)
 }
 
-// InitPlugin load plugins
-func InitPlugin() {
+// StartPlugins load plugins
+func StartPlugins() {
 	findPluginFile()
 
 	for i := 0; i < len(plugins); i++ {
