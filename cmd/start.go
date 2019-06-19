@@ -80,10 +80,10 @@ func worker(plugin Plugin) {
 					plugins[0].CallAction("get", []byte(`{"Link": "http://192.168.1.135/toggle"}`))
 				}
 			}
-			fmt.Println(val.Field(0))
-			// for i := 0; i < val.NumField(); i++ {
-			// 	fmt.Println(val.Field(i))
-			// }
+			for i := 0; i < val.NumField(); i++ {
+				fmt.Println(val.Type().Field(i).Name)
+				fmt.Println(val.Field(i))
+			}
 		}
 	}
 	go worker(plugin)
@@ -110,13 +110,13 @@ var startCmd = &cobra.Command{
 			}
 			plugins[i].Config = conf.(*sdk.Configuration)
 
-			swi, err := plug.Lookup("Test")
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
+			// swi, err := plug.Lookup("Test")
+			// if err != nil {
+			// 	fmt.Println(err)
+			// 	os.Exit(1)
+			// }
 
-			fmt.Println(swi)
+			// fmt.Println(swi)
 
 			onStart, err := plug.Lookup("OnStart")
 			if err != nil {
