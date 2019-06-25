@@ -88,7 +88,7 @@ func InitDB() {
 	if err != nil {
 		log.Panic(err)
 	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS token (id BLOB PRIMARY KEY, user_id BLOB, type TEXT, ip TEXT, user_agent TEXT, os TEXT, read INTEGER, write INTEGER, manage INTEGER, admin INTEGER, created_at TEXT, expire_at TEXT)")
+	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS token (id BLOB PRIMARY KEY, user_id BLOB, type TEXT, ip TEXT, user_agent TEXT, read INTEGER, write INTEGER, manage INTEGER, admin INTEGER, created_at TEXT, expire_at TEXT)")
 	if err != nil {
 		log.Panic(err)
 	}
