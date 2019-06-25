@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -90,7 +89,7 @@ func SignUp(c echo.Context) error {
 		Firstname: req.Firstname,
 		Lastname:  req.Lastname,
 		Birthdate: req.Birthdate,
-		CreatedAt: time.Now().String(),
+		CreatedAt: time.Now().Format(time.RFC1123),
 	}
 	DB.NamedExec("INSERT INTO user (id, email, password, firstname, lastname, birthdate, created_at) VALUES (:id, :email, :password, :firstname, :lastname, :birthdate, :created_at)", newUser)
 
@@ -139,8 +138,8 @@ func SignIn(c echo.Context) error {
 		Write:     1,
 		Manage:    1,
 		Admin:     1,
-		CreatedAt: createdAt.String(),
-		ExpireAt:  createdAt.AddDate(0, 1, 0).String(),
+		CreatedAt: createdAt.Format(time.RFC1123),
+		ExpireAt:  createdAt.AddDate(0, 1, 0).Format(time.RFC1123),
 	}
 	DB.NamedExec("INSERT INTO token (id, user_id, type, ip, user_agent, read, write, manage, admin, created_at, expire_at) VALUES (:id, :user_id, :type, :ip, :user_agent, :read, :write, :manage, :admin, :created_at, :expire_at)", newToken)
 
@@ -156,7 +155,14 @@ func IsAuthenticated(key string, c echo.Context) (bool, error) {
 	if err != nil {
 		return false, nil
 	}
-	fmt.Println(time.Parse(time.Now().String(), token.ExpireAt))
 
-	return key == "valid-key", nil
+	expireAt, err := time.Parse(time.RFC1123, token.ExpireAt)
+	if err != nil {
+		return false, nil
+	}
+	if expireAt.Sub(time.Now()) <= 0 {
+		return false, nil
+	}
+
+	return true, nil
 }
