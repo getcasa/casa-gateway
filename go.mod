@@ -9,6 +9,7 @@ require (
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/gommon v0.2.9 // indirect
 	github.com/lib/pq v1.1.1 // indirect
+	github.com/mattn/go-sqlite3 v1.10.0
 	github.com/oklog/ulid/v2 v2.0.2
 	github.com/pborman/getopt v0.0.0-20190409184431-ee0cd42419d3 // indirect
 	github.com/spf13/cobra v0.0.3
