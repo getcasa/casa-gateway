@@ -23,11 +23,11 @@ type Token struct {
 	UserID    string `db:"user_id"`
 	Type      string `db:"type"`
 	IP        string `db:"ip"`
-	Browser   string `db:"browser"`
-	OS        string `db:"os"`
+	UserAgent string `db:"user_agent"`
 	Read      int    `db:"read"`
 	Write     int    `db:"write"`
 	Manage    int    `db:"manage"`
+	Admin     int    `db:"admin"`
 	CreatedAt string `db:"created_at"`
 	ExpireAt  string `db:"expire_at"`
 }
@@ -88,7 +88,7 @@ func InitDB() {
 	if err != nil {
 		log.Panic(err)
 	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS token (id BLOB PRIMARY KEY, user_id BLOB, type TEXT, ip TEXT, browser TEXT, os TEXT, read INTEGER, write INTEGER, manage INTEGER, created_at TEXT, expire_at TEXT)")
+	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS token (id BLOB PRIMARY KEY, user_id BLOB, type TEXT, ip TEXT, user_agent TEXT, os TEXT, read INTEGER, write INTEGER, manage INTEGER, admin INTEGER, created_at TEXT, expire_at TEXT)")
 	if err != nil {
 		log.Panic(err)
 	}
