@@ -38,8 +38,15 @@ func StartWebServer(port string) {
 
 	// Signup
 	v1.POST("/signup", SignUp)
+
 	// Signin
 	v1.POST("/signin", SignIn)
+
+	// Check authorization
+	v1.Use(middleware.KeyAuth(IsAuthenticated))
+
+	// Home
+	v1.POST("/homes", AddHome)
 
 	// Devices
 	v1.GET("/devices", GetDevices)

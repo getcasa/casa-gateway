@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -146,4 +147,16 @@ func SignIn(c echo.Context) error {
 	return c.JSON(http.StatusOK, MessageResponse{
 		Message: id,
 	})
+}
+
+// IsAuthenticated verify validity of token
+func IsAuthenticated(key string, c echo.Context) (bool, error) {
+	var token Token
+	err := DB.Get(&token, "SELECT * FROM token WHERE id=$1", key)
+	if err != nil {
+		return false, nil
+	}
+	fmt.Println(time.Parse(time.Now().String(), token.ExpireAt))
+
+	return key == "valid-key", nil
 }
