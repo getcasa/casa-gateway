@@ -21,14 +21,9 @@ type signupReq struct {
 	Birthdate            string `json:"birthdate"`
 }
 
-func hashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-	return string(bytes), err
-}
-
-func checkPasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
+type signinReq struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 // SignUp route create an user
@@ -80,7 +75,7 @@ func SignUp(c echo.Context) error {
 		})
 	}
 
-	hashedPassword, err := hashPassword(req.Password)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), 14)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, MessageResponse{
 			Message: "Error 1",
@@ -90,7 +85,7 @@ func SignUp(c echo.Context) error {
 	newUser := User{
 		ID:        NewULID().String(),
 		Email:     req.Email,
-		Password:  hashedPassword,
+		Password:  string(hashedPassword),
 		Firstname: req.Firstname,
 		Lastname:  req.Lastname,
 		Birthdate: req.Birthdate,
@@ -100,5 +95,55 @@ func SignUp(c echo.Context) error {
 
 	return c.JSON(http.StatusCreated, MessageResponse{
 		Message: "Account created",
+	})
+}
+
+// SignIn route log an user by giving token
+func SignIn(c echo.Context) error {
+	req := new(signinReq)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
+	var missingFields []string
+	if req.Email == "" {
+		missingFields = append(missingFields, "email")
+	}
+	if req.Password == "" {
+		missingFields = append(missingFields, "password")
+	}
+	if len(missingFields) > 0 {
+		return c.JSON(http.StatusBadRequest, MessageResponse{
+			Message: "Some fields missing: " + strings.Join(missingFields, ", "),
+		})
+	}
+
+	var user User
+	err := DB.Get(&user, "SELECT * FROM user WHERE email=$1", req.Email)
+	if err != nil || bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)) != nil {
+		return c.JSON(http.StatusBadRequest, MessageResponse{
+			Message: "Email and password doesn't match",
+		})
+	}
+
+	id := NewULID().String()
+	createdAt := time.Now()
+
+	newToken := Token{
+		ID:        id,
+		UserID:    user.ID,
+		Type:      "signin",
+		IP:        c.RealIP(),
+		UserAgent: c.Request().UserAgent(),
+		Read:      1,
+		Write:     1,
+		Manage:    1,
+		Admin:     1,
+		CreatedAt: createdAt.String(),
+		ExpireAt:  createdAt.AddDate(0, 1, 0).String(),
+	}
+	DB.NamedExec("INSERT INTO token (id, user_id, type, ip, user_agent, read, write, manage, admin, created_at, expire_at) VALUES (:id, :user_id, :type, :ip, :user_agent, :read, :write, :manage, :admin, :created_at, :expire_at)", newToken)
+
+	return c.JSON(http.StatusOK, MessageResponse{
+		Message: id,
 	})
 }

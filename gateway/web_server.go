@@ -38,6 +38,8 @@ func StartWebServer(port string) {
 
 	// Signup
 	v1.POST("/signup", SignUp)
+	// Signin
+	v1.POST("/signin", SignIn)
 
 	// Devices
 	v1.GET("/devices", GetDevices)
