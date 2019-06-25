@@ -1,9 +1,10 @@
 package gateway
 
 import (
-	"math/rand"
 	"net/http"
 	"time"
+
+	cryptorand "crypto/rand"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
@@ -17,9 +18,8 @@ type MessageResponse struct {
 
 // NewULID create an ulid
 func NewULID() ulid.ULID {
-	t := time.Unix(1000000, 0)
-	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
-	return ulid.MustNew(ulid.Timestamp(t), entropy)
+	id, _ := ulid.New(ulid.Timestamp(time.Now()), cryptorand.Reader)
+	return id
 }
 
 // StartWebServer start echo server

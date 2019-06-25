@@ -72,12 +72,31 @@ func SignUp(c echo.Context) error {
 			Message: "Passwords mismatch",
 		})
 	}
-	// statement, _ := DB.Prepare("SELECT * FROM people WHERE (?, ?, ?, ?, ?, ?, ?)")
-	// row, _ := DB.QueryRow("SELECT * FROM people WHERE")
+	var user User
+	err := DB.Get(&user, "SELECT * FROM user WHERE email=$1", req.Email)
+	if err == nil {
+		return c.JSON(http.StatusBadRequest, MessageResponse{
+			Message: "Email already used",
+		})
+	}
 
-	hashedPassword, _ := hashPassword(req.Password)
-	statement, _ = DB.Prepare("INSERT INTO user (id, email, password, firstname, lastname, birthdate, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-	statement.Exec(NewULID().String(), req.Email, hashedPassword, req.Firstname, req.Lastname, req.Birthdate, time.Now())
+	hashedPassword, err := hashPassword(req.Password)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, MessageResponse{
+			Message: "Error 1",
+		})
+	}
+
+	newUser := User{
+		ID:        NewULID().String(),
+		Email:     req.Email,
+		Password:  hashedPassword,
+		Firstname: req.Firstname,
+		Lastname:  req.Lastname,
+		Birthdate: req.Birthdate,
+		CreatedAt: time.Now().String(),
+	}
+	DB.NamedExec("INSERT INTO user (id, email, password, firstname, lastname, birthdate, created_at) VALUES (:id, :email, :password, :firstname, :lastname, :birthdate, :created_at)", newUser)
 
 	return c.JSON(http.StatusCreated, MessageResponse{
 		Message: "Account created",
