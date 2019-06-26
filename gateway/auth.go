@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ItsJimi/casa-gateway/utils"
 	"github.com/labstack/echo"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -83,7 +84,7 @@ func SignUp(c echo.Context) error {
 	}
 
 	newUser := User{
-		ID:        NewULID().String(),
+		ID:        utils.NewULID().String(),
 		Email:     req.Email,
 		Password:  string(hashedPassword),
 		Firstname: req.Firstname,
@@ -125,7 +126,7 @@ func SignIn(c echo.Context) error {
 		})
 	}
 
-	id := NewULID().String()
+	id := utils.NewULID().String()
 	createdAt := time.Now()
 
 	newToken := Token{

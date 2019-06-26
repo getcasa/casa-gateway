@@ -2,24 +2,14 @@ package gateway
 
 import (
 	"net/http"
-	"time"
-
-	cryptorand "crypto/rand"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"github.com/oklog/ulid/v2"
 )
 
 // MessageResponse define json response for API
 type MessageResponse struct {
 	Message string `json:"message"`
-}
-
-// NewULID create an ulid
-func NewULID() ulid.ULID {
-	id, _ := ulid.New(ulid.Timestamp(time.Now()), cryptorand.Reader)
-	return id
 }
 
 // StartWebServer start echo server
