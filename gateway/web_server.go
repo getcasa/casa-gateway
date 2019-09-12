@@ -35,9 +35,6 @@ func StartWebServer(port string) {
 	// Check authorization
 	v1.Use(middleware.KeyAuth(IsAuthenticated))
 
-	// Home
-	v1.POST("/homes", AddHome)
-
 	// Devices
 	v1.GET("/devices", GetDevices)
 	v1.POST("/devices", AddDevice)

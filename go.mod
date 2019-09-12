@@ -18,3 +18,5 @@ require (
 )
 
 replace github.com/getcasa/sdk v0.0.0-20190603120433-a6275a3eed49 => ../casa-sdk
+
+go 1.13

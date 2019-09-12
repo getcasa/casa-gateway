@@ -73,13 +73,26 @@ type Permission struct {
 	UpdatedAt string `db:"updated_at"`
 }
 
+// Automation struct in database
+type Automation struct {
+	ID           string   `db:"id" json:"id"`
+	Name         string   `db:"name" json:"name"`
+	Trigger      []string `db:"trigger" json:"trigger"`
+	TriggerValue []string `db:"trigge_value" json:"triggerValue"`
+	Action       []string `db:"action" json:"action"`
+	ActionValue  []string `db:"action_value" json:"actionValue"`
+	CreatedAt    string   `db:"created_at" json:"createdAt"`
+	Status       bool     `db:"status" json:"status"`
+	CreatorID    string   `db:"creator_id" json:"creatorId"`
+}
+
 // DB define the database object
 var DB *sqlx.DB
 
 // InitDB check and create tables
 func InitDB() {
 	var err error
-	DB, err = sqlx.Open("sqlite3", "./casa.db")
+	DB, err = sqlx.Open("sqlite3", "./gateway.db")
 	if err != nil {
 		log.Panic(err)
 	}

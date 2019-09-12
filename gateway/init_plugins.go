@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/getcasa/sdk"
 )
@@ -55,29 +56,39 @@ func pluginFromName(name string) *Plugin {
 }
 
 func worker(plugin Plugin) {
+
 	if plugin.Stop == true {
 		wg.Done()
 		return
 	}
+
 	if plugin.OnData != nil {
 		res := plugin.OnData()
+
 		if res != nil {
 			val := reflect.ValueOf(res).Elem()
+			// TODO: Save data get
+
 			if val.Field(1).String() == "click" && val.Field(0).String() == "158d00019f84c6" {
 				if pluginFromName("request").CallAction != nil {
 					pluginFromName("request").CallAction("get", []byte(`{"Link": "http://192.168.1.131/toggle"}`))
 				}
 			} else if val.Field(1).String() == "double_click" && val.Field(0).String() == "158d00019f84c6" {
-				if plugins[0].CallAction != nil {
-					plugins[0].CallAction("get", []byte(`{"Link": "http://192.168.1.135/toggle"}`))
+				if pluginFromName("request").CallAction != nil {
+					pluginFromName("request").CallAction("get", []byte(`{"Link": "http://192.168.1.135/toggle"}`))
 				}
 			}
+
+			fmt.Println("------------")
 			for i := 0; i < val.NumField(); i++ {
 				fmt.Println(val.Type().Field(i).Name)
 				fmt.Println(val.Field(i))
 			}
+			fmt.Println("------------")
 		}
+
 	}
+
 	go worker(plugin)
 }
 
@@ -85,55 +96,55 @@ func worker(plugin Plugin) {
 func StartPlugins() {
 	findPluginFile()
 
+	start := time.Now()
+	wg.Add(len(plugins))
 	for i := 0; i < len(plugins); i++ {
-		plug, err := plugin.Open(plugins[i].File)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+		go func(i int) {
+			defer wg.Done()
+			plug, err := plugin.Open(plugins[i].File)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 
-		conf, err := plug.Lookup("Config")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		plugins[i].Config = conf.(*sdk.Configuration)
+			conf, err := plug.Lookup("Config")
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			plugins[i].Config = conf.(*sdk.Configuration)
 
-		// swi, err := plug.Lookup("Test")
-		// if err != nil {
-		// 	fmt.Println(err)
-		// 	os.Exit(1)
-		// }
+			onStart, err := plug.Lookup("OnStart")
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			plugins[i].OnStart = onStart.(func())
 
-		// fmt.Println(swi)
+			onStop, err := plug.Lookup("OnStop")
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			plugins[i].OnStop = onStop.(func())
 
-		onStart, err := plug.Lookup("OnStart")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		plugins[i].OnStart = onStart.(func())
+			onData, err := plug.Lookup("OnData")
+			if err == nil {
+				plugins[i].OnData = onData.(func() interface{})
+			}
 
-		onStop, err := plug.Lookup("OnStop")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		plugins[i].OnStop = onStop.(func())
+			callAction, err := plug.Lookup("CallAction")
+			if err == nil {
+				plugins[i].CallAction = callAction.(func(string, []byte))
+			}
 
-		onData, err := plug.Lookup("OnData")
-		if err == nil {
-			plugins[i].OnData = onData.(func() interface{})
-		}
-
-		callAction, err := plug.Lookup("CallAction")
-		if err == nil {
-			plugins[i].CallAction = callAction.(func(string, []byte))
-		}
-
-		plugins[i].OnStart()
-		fmt.Println(plugins[i].Name)
+			plugins[i].OnStart()
+			fmt.Println(plugins[i].Name)
+		}(i)
 	}
+	wg.Wait()
+	t := time.Now()
+	fmt.Println(t.Sub(start))
 
 	for _, plugin := range plugins {
 		wg.Add(1)
