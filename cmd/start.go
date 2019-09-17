@@ -20,7 +20,7 @@ var startCmd = &cobra.Command{
 		}
 
 		gateway.InitDB()
-		gateway.StartPlugins()
+		go gateway.StartPlugins()
 		gateway.StartWebServer(port)
 	},
 }

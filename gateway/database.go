@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"database/sql"
 	"log"
 
 	"github.com/jmoiron/sqlx"
@@ -8,117 +9,143 @@ import (
 
 // User structure in database
 type User struct {
-	ID        string `db:"id"`
-	Firstname string `db:"firstname"`
-	Lastname  string `db:"lastname"`
-	Email     string `db:"email"`
-	Password  string `db:"password"`
-	Birthdate string `db:"birthdate"`
-	CreatedAt string `db:"created_at"`
+	ID        string `db:"id" json:"id"`
+	Firstname string `db:"firstname" json:"firstname"`
+	Lastname  string `db:"lastname" json:"lastname"`
+	Email     string `db:"email" json:"email"`
+	Password  string `db:"password" json:"-"`
+	Birthdate string `db:"birthdate" json:"birthdate"`
+	CreatedAt string `db:"created_at" json:"createdAt"`
 }
 
 // Token structure in database
 type Token struct {
-	ID        string `db:"id"`
-	UserID    string `db:"user_id"`
-	Type      string `db:"type"`
-	IP        string `db:"ip"`
-	UserAgent string `db:"user_agent"`
-	Read      int    `db:"read"`
-	Write     int    `db:"write"`
-	Manage    int    `db:"manage"`
-	Admin     int    `db:"admin"`
-	CreatedAt string `db:"created_at"`
-	ExpireAt  string `db:"expire_at"`
+	ID        string `db:"id" json:"id"`
+	UserID    string `db:"user_id" json:"userId"`
+	Type      string `db:"type" json:"type"`
+	IP        string `db:"ip" json:"ip"`
+	UserAgent string `db:"user_agent" json:"userAgent"`
+	Read      int    `db:"read" json:"read"`
+	Write     int    `db:"write" json:"write"`
+	Manage    int    `db:"manage" json:"manage"`
+	Admin     int    `db:"admin" json:"admin"`
+	CreatedAt string `db:"created_at" json:"createdAt"`
+	ExpireAt  string `db:"expire_at" json:"expireAt"`
+}
+
+// Gateway structure in database
+type Gateway struct {
+	ID        string         `db:"id" json:"id"`
+	HomeID    sql.NullString `db:"home_id" json:"homeId"`
+	Name      sql.NullString `db:"name" json:"name"`
+	Model     string         `db:"model" json:"model"`
+	CreatedAt string         `db:"created_at" json:"createdAt"`
+	CreatorID sql.NullString `db:"creator_id" json:"creatorId"`
 }
 
 // Home structure in database
 type Home struct {
-	ID        string `db:"id"`
-	Name      string `db:"name"`
-	Address   string `db:"address"`
-	CreatedAt string `db:"created_at"`
-	CreatorID string `db:"creator_id"`
+	ID        string `db:"id" json:"id"`
+	Name      string `db:"name" json:"name"`
+	Address   string `db:"address" json:"address"`
+	CreatedAt string `db:"created_at" json:"createdAt"`
+	CreatorID string `db:"creator_id" json:"creatorId"`
 }
 
 // Room structure in database
 type Room struct {
-	ID        string `db:"id"`
-	Name      string `db:"name"`
-	HomeID    string `db:"home_id"`
-	CreatedAt string `db:"created_at"`
-	CreatorID string `db:"creator_id"`
+	ID        string `db:"id" json:"id"`
+	Name      string `db:"name" json:"name"`
+	HomeID    string `db:"home_id" json:"homeId"`
+	CreatedAt string `db:"created_at" json:"createdAt"`
+	CreatorID string `db:"creator_id" json:"creatorId"`
 }
 
 // Device structure in database
 type Device struct {
-	ID         string `db:"id"`
-	Name       string `db:"name"`
-	PhysicalID string `db:"physical_id"`
-	RoomID     string `db:"room_id"`
-	CreatedAt  string `db:"created_at"`
-	CreatorID  string `db:"creator_id"`
+	ID         string `db:"id" json:"id"`
+	GatewayID  string `db:"gateway_id" json:"gatewayId"`
+	Name       string `db:"name" json:"name"`
+	PhysicalID string `db:"physical_id" json:"physicalId"`
+	RoomID     string `db:"room_id" json:"roomId"`
+	CreatedAt  string `db:"created_at" json:"createdAt"`
+	CreatorID  string `db:"creator_id" json:"creatorId"`
 }
 
 // Permission structure in database
 type Permission struct {
-	ID        string `db:"id"`
-	UserID    string `db:"user_id"`
-	Type      string `db:"type"`
-	TypeID    string `db:"type_id"`
-	Read      int    `db:"read"`
-	Write     int    `db:"write"`
-	Manage    int    `db:"manage"`
-	Admin     int    `db:"admin"`
-	UpdatedAt string `db:"updated_at"`
+	ID        string `db:"id" json:"id"`
+	UserID    string `db:"user_id" json:"userId"`
+	Type      string `db:"type" json:"type"` //home, room, device
+	TypeID    string `db:"type_id" json:"typeId"`
+	Read      int    `db:"read" json:"read"`
+	Write     int    `db:"write" json:"write"`
+	Manage    int    `db:"manage" json:"manage"`
+	Admin     int    `db:"admin" json:"admin"`
+	UpdatedAt string `db:"updated_at" json:"updatedAt"`
 }
 
 // Automation struct in database
 type Automation struct {
 	ID           string   `db:"id" json:"id"`
+	HomeID       string   `db:"home_id" json:"homeId"`
 	Name         string   `db:"name" json:"name"`
 	Trigger      []string `db:"trigger" json:"trigger"`
-	TriggerValue []string `db:"trigge_value" json:"triggerValue"`
+	TriggerValue []string `db:"trigger_value" json:"triggerValue"`
 	Action       []string `db:"action" json:"action"`
 	ActionValue  []string `db:"action_value" json:"actionValue"`
-	CreatedAt    string   `db:"created_at" json:"createdAt"`
 	Status       bool     `db:"status" json:"status"`
+	CreatedAt    string   `db:"created_at" json:"createdAt"`
 	CreatorID    string   `db:"creator_id" json:"creatorId"`
 }
 
 // DB define the database object
 var DB *sqlx.DB
 
-// InitDB check and create tables
+// InitDB start the database to use it in server
 func InitDB() {
 	var err error
-	DB, err = sqlx.Open("sqlite3", "./gateway.db")
+	DB, err = sqlx.Open("sqlite3", "./casa.db")
 	if err != nil {
 		log.Panic(err)
 	}
 
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS user (id BLOB PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, birthdate TEXT, created_at TEXT)")
+	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS users (id BYTEA PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, birthdate TEXT, created_at TEXT)")
 	if err != nil {
 		log.Panic(err)
 	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS token (id BLOB PRIMARY KEY, user_id BLOB, type TEXT, ip TEXT, user_agent TEXT, read INTEGER, write INTEGER, manage INTEGER, admin INTEGER, created_at TEXT, expire_at TEXT)")
+	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS tokens (id BYTEA PRIMARY KEY, user_id BYTEA, type TEXT, ip TEXT, user_agent TEXT, read INTEGER, write INTEGER, manage INTEGER, admin INTEGER, created_at TEXT, expire_at TEXT)")
 	if err != nil {
 		log.Panic(err)
 	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS home (id BLOB PRIMARY KEY, name TEXT, address TEXT, created_at TEXT, creator_id BLOB)")
+	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS gateways (id BYTEA PRIMARY KEY, home_id BYTEA, name TEXT, model TEXT, created_at TEXT, creator_id BYTEA)")
 	if err != nil {
 		log.Panic(err)
 	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS room (id BLOB PRIMARY KEY, name TEXT, home_id BLOB, created_at TEXT, creator_id BLOB)")
+	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS homes (id BYTEA PRIMARY KEY, name TEXT, address TEXT, created_at TEXT, creator_id BYTEA)")
 	if err != nil {
 		log.Panic(err)
 	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS device (id BLOB PRIMARY KEY, name TEXT, physical_id TEXT, room_id BLOB, created_at TEXT, creator_id BLOB)")
+	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS rooms (id BYTEA PRIMARY KEY, name TEXT, home_id BYTEA, created_at TEXT, creator_id BYTEA)")
 	if err != nil {
 		log.Panic(err)
 	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS permission (id BLOB PRIMARY KEY, user_id BLOB, type TEXT, type_id BLOB, read INTEGER, write INTEGER, manage INTEGER, admin INTEGER, updated_at TEXT)")
+	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS devices (id BYTEA PRIMARY KEY, name TEXT, physical_id TEXT, room_id BYTEA, created_at TEXT, creator_id BYTEA)")
 	if err != nil {
 		log.Panic(err)
 	}
+	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS permissions (id BYTEA PRIMARY KEY, user_id BYTEA, type TEXT, type_id BYTEA, read INTEGER, write INTEGER, manage INTEGER, admin INTEGER, updated_at TEXT)")
+	if err != nil {
+		log.Panic(err)
+	}
+
+	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS automations (id BYTEA PRIMARY KEY, name TEXT, trigger TEXT[], trigger_value TEXT[], action TEXT[], action_value TEXT[], status BOOL, created_at TEXT, creator_id BYTEA)")
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
+// SyncDB sync the DB with server's DB
+func SyncDB() {
+
 }
