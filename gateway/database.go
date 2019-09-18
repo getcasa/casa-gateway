@@ -2,9 +2,14 @@ package gateway
 
 import (
 	"database/sql"
+	"encoding/json"
+	"io/ioutil"
 	"log"
+	"net/http"
 
+	"github.com/ItsJimi/casa-gateway/utils"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 // User structure in database
@@ -139,13 +144,67 @@ func InitDB() {
 		log.Panic(err)
 	}
 
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS automations (id BYTEA PRIMARY KEY, name TEXT, trigger TEXT[], trigger_value TEXT[], action TEXT[], action_value TEXT[], status BOOL, created_at TEXT, creator_id BYTEA)")
+	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS automations (id BYTEA PRIMARY KEY, home_id BYTEA, name TEXT, trigger TEXT[], trigger_value TEXT[], action TEXT[], action_value TEXT[], status BOOL, created_at TEXT, creator_id BYTEA)")
 	if err != nil {
 		log.Panic(err)
 	}
 }
 
+type synced struct {
+	Data struct {
+		Home        Home
+		Gateway     Gateway
+		Users       []User
+		Automations []Automation
+		Devices     []Device
+		Rooms       []Room
+		Permissions []Permission
+	} `json:"data"`
+}
+
 // SyncDB sync the DB with server's DB
 func SyncDB() {
+	resp, err := http.Get("http://localhost:3000/v1/gateway/sync/" + utils.GetIDFile())
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	var dataMarshalised synced
+	err = json.Unmarshal(body, &dataMarshalised)
+	utils.Check(err, "")
 
+	_, err = DB.NamedExec("INSERT INTO gateways (id, home_id, name, model, created_at, creator_id) VALUES (:id, :home_id, :name, :model, :created_at, :creator_id)", dataMarshalised.Data.Gateway)
+	utils.Check(err, "")
+
+	_, err = DB.NamedExec("INSERT INTO homes (id, name, address, created_at, creator_id) VALUES (:id, :name, :address, :created_at, :creator_id)", dataMarshalised.Data.Home)
+	utils.Check(err, "")
+
+	for _, user := range dataMarshalised.Data.Users {
+		_, err = DB.NamedExec("INSERT INTO users (id, firstname, lastname, email, password, birthdate, created_at) VALUES (:id, :firstname, :lastname, :email, :password, :birthdate, :created_at)", user)
+		utils.Check(err, "")
+	}
+
+	for _, automation := range dataMarshalised.Data.Automations {
+		_, err := DB.Exec("INSERT INTO automations (id, name, trigger, trigger_value, action, action_value, status, created_at, creator_id, home_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+			automation.ID, automation.Name, pq.Array(automation.Trigger), pq.Array(automation.TriggerValue), pq.Array(automation.Action), pq.Array(automation.ActionValue), automation.Status, automation.CreatedAt, automation.CreatorID, automation.HomeID)
+		utils.Check(err, "")
+	}
+
+	for _, device := range dataMarshalised.Data.Devices {
+		_, err = DB.NamedExec("INSERT INTO devices (id, name, physical_id, room_id, created_at, creator_id) VALUES (:id, :name, :physical_id, :room_id, :created_at, :creator_id)", device)
+		utils.Check(err, "")
+	}
+
+	for _, room := range dataMarshalised.Data.Rooms {
+		_, err = DB.NamedExec("INSERT INTO rooms (id, name, home_id, created_at, creator_id) VALUES (:id, :name, :home_id, :created_at, :creator_id)", room)
+		utils.Check(err, "")
+	}
+
+	for _, permission := range dataMarshalised.Data.Permissions {
+		_, err = DB.NamedExec("INSERT INTO permissions (id, user_id, type, type_id, read, write, manage, admin, updated_at) VALUES (:id, :user_id, :type, :type_id, :read, :write, :manage, :admin, :updated_at)", permission)
+		utils.Check(err, "")
+	}
+
+	return
 }
