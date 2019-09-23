@@ -10,7 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ItsJimi/casa-gateway/utils"
 	"github.com/getcasa/sdk"
+	"github.com/lib/pq"
 )
 
 // Plugin define structure of plugin
@@ -55,6 +57,19 @@ func pluginFromName(name string) *Plugin {
 	return nil
 }
 
+type automationStruct struct {
+	ID           string
+	HomeID       string `db:"home_id" json:"homeID"`
+	Name         string
+	Trigger      []string
+	TriggerValue []string `db:"trigger_value" json:"triggerValue"`
+	Action       []string
+	ActionValue  []string `db:"action_value" json:"actionValue"`
+	Status       bool
+	CreatedAt    string `db:"created_at" json:"createdAt"`
+	CreatorID    string `db:"creator_id" json:"creatorID"`
+}
+
 func worker(plugin Plugin) {
 
 	if plugin.Stop == true {
@@ -66,18 +81,12 @@ func worker(plugin Plugin) {
 		res := plugin.OnData()
 
 		if res != nil {
+			fmt.Println(plugin.Name)
+			physicalName := strings.ToLower(reflect.TypeOf(res).String()[strings.Index(reflect.TypeOf(res).String(), ".")+1:])
 			val := reflect.ValueOf(res).Elem()
+			id := val.FieldByName(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).FieldID).String()
+			field := val.FieldByName(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Field).String()
 			// TODO: Save data get
-
-			if val.Field(1).String() == "click" && val.Field(0).String() == "158d00019f84c6" {
-				if pluginFromName("request").CallAction != nil {
-					pluginFromName("request").CallAction("get", []byte(`{"Link": "http://192.168.1.131/toggle"}`))
-				}
-			} else if val.Field(1).String() == "double_click" && val.Field(0).String() == "158d00019f84c6" {
-				if pluginFromName("request").CallAction != nil {
-					pluginFromName("request").CallAction("get", []byte(`{"Link": "http://192.168.1.135/toggle"}`))
-				}
-			}
 
 			fmt.Println("------------")
 			for i := 0; i < val.NumField(); i++ {
@@ -85,6 +94,36 @@ func worker(plugin Plugin) {
 				fmt.Println(val.Field(i))
 			}
 			fmt.Println("------------")
+
+			rows, err := DB.Queryx("SELECT * FROM automations WHERE UPPER(SUBSTR(trigger, INSTR(trigger, ' ')+1)) LIKE UPPER('%" + id + "%')")
+			fmt.Println(val.FieldByName(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).FieldID).String())
+			if err == nil {
+
+				for rows.Next() {
+
+					var auto automationStruct
+					err := rows.Scan(&auto.ID, &auto.HomeID, &auto.Name, pq.Array(&auto.Trigger), pq.Array(&auto.TriggerValue), pq.Array(&auto.Action), pq.Array(&auto.ActionValue), &auto.Status, &auto.CreatedAt, &auto.CreatorID)
+					if err == nil {
+						count := 0
+
+						for i := 0; i < len(auto.Trigger); i++ {
+							if auto.Trigger[i] == id && auto.TriggerValue[i] == field {
+								count++
+							}
+						}
+
+						if count == len(auto.Trigger) {
+							for i := 0; i < len(auto.Action); i++ {
+								var device Device
+								err = DB.Get(&device, `SELECT * FROM devices WHERE physical_id = $1`, auto.Action[i])
+								if err == nil {
+									pluginFromName(device.Plugin).CallAction(device.PhysicalName, []byte(`{"Link": "`+auto.Action[i]+`"}`))
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 
 	}

@@ -3,6 +3,7 @@ package gateway
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -68,13 +69,15 @@ type Room struct {
 
 // Device structure in database
 type Device struct {
-	ID         string `db:"id" json:"id"`
-	GatewayID  string `db:"gateway_id" json:"gatewayId"`
-	Name       string `db:"name" json:"name"`
-	PhysicalID string `db:"physical_id" json:"physicalId"`
-	RoomID     string `db:"room_id" json:"roomId"`
-	CreatedAt  string `db:"created_at" json:"createdAt"`
-	CreatorID  string `db:"creator_id" json:"creatorId"`
+	ID           string `db:"id" json:"id"`
+	GatewayID    string `db:"gateway_id" json:"gatewayId"`
+	Name         string `db:"name" json:"name"`
+	PhysicalID   string `db:"physical_id" json:"physicalId"`
+	PhysicalName string `db:"physical_name" json:"physicalName"`
+	Plugin       string `db:"plugin" json:"plugin"`
+	RoomID       string `db:"room_id" json:"roomId"`
+	CreatedAt    string `db:"created_at" json:"createdAt"`
+	CreatorID    string `db:"creator_id" json:"creatorId"`
 }
 
 // Permission structure in database
@@ -135,7 +138,7 @@ func InitDB() {
 	if err != nil {
 		log.Panic(err)
 	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS devices (id BYTEA PRIMARY KEY, name TEXT, physical_id TEXT, room_id BYTEA, created_at TEXT, creator_id BYTEA)")
+	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS devices (id BYTEA PRIMARY KEY, gateway_id BYTEA, name TEXT, physical_id TEXT, physical_name TEXT, plugin TEXT,room_id BYTEA, created_at TEXT, creator_id BYTEA)")
 	if err != nil {
 		log.Panic(err)
 	}
@@ -143,7 +146,6 @@ func InitDB() {
 	if err != nil {
 		log.Panic(err)
 	}
-
 	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS automations (id BYTEA PRIMARY KEY, home_id BYTEA, name TEXT, trigger TEXT[], trigger_value TEXT[], action TEXT[], action_value TEXT[], status BOOL, created_at TEXT, creator_id BYTEA)")
 	if err != nil {
 		log.Panic(err)
@@ -164,6 +166,12 @@ type synced struct {
 
 // SyncDB sync the DB with server's DB
 func SyncDB() {
+	var gateway Gateway
+	err := DB.Get(gateway, `SELECT * FROM gateways`)
+	if err == nil || gateway.ID == "" {
+		fmt.Println(err)
+		return
+	}
 	resp, err := http.Get("http://localhost:3000/v1/gateway/sync/" + utils.GetIDFile())
 	if err != nil {
 		return
@@ -192,7 +200,7 @@ func SyncDB() {
 	}
 
 	for _, device := range dataMarshalised.Data.Devices {
-		_, err = DB.NamedExec("INSERT INTO devices (id, name, physical_id, room_id, created_at, creator_id) VALUES (:id, :name, :physical_id, :room_id, :created_at, :creator_id)", device)
+		_, err = DB.NamedExec("INSERT INTO devices (id, gateway_id, name, physical_id, physical_name, plugin, room_id, created_at, creator_id) VALUES (:id, :gateway_id, :name, :physical_id, :physical_name,:plugin, :room_id, :created_at, :creator_id)", device)
 		utils.Check(err, "")
 	}
 

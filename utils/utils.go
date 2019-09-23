@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/getcasa/sdk"
 	"github.com/oklog/ulid/v2"
 )
 
@@ -38,4 +39,14 @@ func Check(e error, typ string) {
 	if e != nil {
 		panic(e)
 	}
+}
+
+// FindTriggerFromName find trigger with name trigger
+func FindTriggerFromName(triggers []sdk.Trigger, name string) sdk.Trigger {
+	for _, trigger := range triggers {
+		if trigger.Name == name {
+			return trigger
+		}
+	}
+	return sdk.Trigger{}
 }
