@@ -96,7 +96,7 @@ func worker(plugin Plugin) {
 			fmt.Println("------------")
 
 			rows, err := DB.Queryx("SELECT * FROM automations WHERE UPPER(SUBSTR(trigger, INSTR(trigger, ' ')+1)) LIKE UPPER('%" + id + "%')")
-			fmt.Println(val.FieldByName(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).FieldID).String())
+			fmt.Println(id)
 			if err == nil {
 
 				for rows.Next() {
@@ -117,7 +117,7 @@ func worker(plugin Plugin) {
 								var device Device
 								err = DB.Get(&device, `SELECT * FROM devices WHERE physical_id = $1`, auto.Action[i])
 								if err == nil {
-									pluginFromName(device.Plugin).CallAction(device.PhysicalName, []byte(`{"Link": "`+auto.Action[i]+`"}`))
+									pluginFromName(device.Plugin).CallAction(device.PhysicalName, []byte(`{"address": "`+auto.Action[i]+`"}`))
 								}
 							}
 						}

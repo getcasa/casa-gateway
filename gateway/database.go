@@ -3,7 +3,6 @@ package gateway
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -167,9 +166,8 @@ type synced struct {
 // SyncDB sync the DB with server's DB
 func SyncDB() {
 	var gateway Gateway
-	err := DB.Get(gateway, `SELECT * FROM gateways`)
-	if err == nil || gateway.ID == "" {
-		fmt.Println(err)
+	err := DB.Get(&gateway, `SELECT * FROM gateways`)
+	if err == nil && gateway.ID != "" {
 		return
 	}
 	resp, err := http.Get("http://localhost:3000/v1/gateway/sync/" + utils.GetIDFile())
