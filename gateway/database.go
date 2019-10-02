@@ -94,16 +94,19 @@ type Permission struct {
 
 // Automation struct in database
 type Automation struct {
-	ID           string   `db:"id" json:"id"`
-	HomeID       string   `db:"home_id" json:"homeId"`
-	Name         string   `db:"name" json:"name"`
-	Trigger      []string `db:"trigger" json:"trigger"`
-	TriggerValue []string `db:"trigger_value" json:"triggerValue"`
-	Action       []string `db:"action" json:"action"`
-	ActionValue  []string `db:"action_value" json:"actionValue"`
-	Status       bool     `db:"status" json:"status"`
-	CreatedAt    string   `db:"created_at" json:"createdAt"`
-	CreatorID    string   `db:"creator_id" json:"creatorId"`
+	ID              string   `db:"id" json:"id"`
+	HomeID          string   `db:"home_id" json:"homeId"`
+	Name            string   `db:"name" json:"name"`
+	Trigger         []string `db:"trigger" json:"trigger"`
+	TriggerKey      []string `db:"trigger_key" json:"triggerKey"`
+	TriggerValue    []string `db:"trigger_value" json:"triggerValue"`
+	TriggerOperator []string `db:"trigger_operator" json:"triggerOperator"`
+	Action          []string `db:"action" json:"action"`
+	ActionCall      []string `db:"action_call" json:"actionCall"`
+	ActionValue     []string `db:"action_value" json:"actionValue"`
+	Status          bool     `db:"status" json:"status"`
+	CreatedAt       string   `db:"created_at" json:"createdAt"`
+	CreatorID       string   `db:"creator_id" json:"creatorId"`
 }
 
 // DB define the database object
@@ -117,35 +120,12 @@ func InitDB() {
 		log.Panic(err)
 	}
 
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS users (id BYTEA PRIMARY KEY, firstname TEXT, lastname TEXT, email TEXT, password TEXT, birthdate TEXT, created_at TEXT)")
+	file, err := ioutil.ReadFile("database.sql")
 	if err != nil {
 		log.Panic(err)
 	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS tokens (id BYTEA PRIMARY KEY, user_id BYTEA, type TEXT, ip TEXT, user_agent TEXT, read INTEGER, write INTEGER, manage INTEGER, admin INTEGER, created_at TEXT, expire_at TEXT)")
-	if err != nil {
-		log.Panic(err)
-	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS gateways (id BYTEA PRIMARY KEY, home_id BYTEA, name TEXT, model TEXT, created_at TEXT, creator_id BYTEA)")
-	if err != nil {
-		log.Panic(err)
-	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS homes (id BYTEA PRIMARY KEY, name TEXT, address TEXT, created_at TEXT, creator_id BYTEA)")
-	if err != nil {
-		log.Panic(err)
-	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS rooms (id BYTEA PRIMARY KEY, name TEXT, home_id BYTEA, created_at TEXT, creator_id BYTEA)")
-	if err != nil {
-		log.Panic(err)
-	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS devices (id BYTEA PRIMARY KEY, gateway_id BYTEA, name TEXT, physical_id TEXT, physical_name TEXT, plugin TEXT,room_id BYTEA, created_at TEXT, creator_id BYTEA)")
-	if err != nil {
-		log.Panic(err)
-	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS permissions (id BYTEA PRIMARY KEY, user_id BYTEA, type TEXT, type_id BYTEA, read INTEGER, write INTEGER, manage INTEGER, admin INTEGER, updated_at TEXT)")
-	if err != nil {
-		log.Panic(err)
-	}
-	_, err = DB.Exec("CREATE TABLE IF NOT EXISTS automations (id BYTEA PRIMARY KEY, home_id BYTEA, name TEXT, trigger TEXT[], trigger_value TEXT[], action TEXT[], action_value TEXT[], status BOOL, created_at TEXT, creator_id BYTEA)")
+
+	_, err = DB.Exec(string(file))
 	if err != nil {
 		log.Panic(err)
 	}
@@ -192,8 +172,8 @@ func SyncDB() {
 	}
 
 	for _, automation := range dataMarshalised.Data.Automations {
-		_, err := DB.Exec("INSERT INTO automations (id, name, trigger, trigger_value, action, action_value, status, created_at, creator_id, home_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-			automation.ID, automation.Name, pq.Array(automation.Trigger), pq.Array(automation.TriggerValue), pq.Array(automation.Action), pq.Array(automation.ActionValue), automation.Status, automation.CreatedAt, automation.CreatorID, automation.HomeID)
+		_, err := DB.Exec("INSERT INTO automations (id, name, trigger, trigger_key, trigger_value, trigger_operator, action, action_call, action_value, status, created_at, creator_id, home_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
+			automation.ID, automation.Name, pq.Array(automation.Trigger), pq.Array(automation.TriggerKey), pq.Array(automation.TriggerValue), pq.Array(automation.TriggerOperator), pq.Array(automation.Action), pq.Array(automation.ActionCall), pq.Array(automation.ActionValue), automation.Status, automation.CreatedAt, automation.CreatorID, automation.HomeID)
 		utils.Check(err, "")
 	}
 
