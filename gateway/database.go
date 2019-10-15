@@ -21,6 +21,7 @@ type User struct {
 	Password  string `db:"password" json:"-"`
 	Birthdate string `db:"birthdate" json:"birthdate"`
 	CreatedAt string `db:"created_at" json:"createdAt"`
+	UpdatedAt string `db:"updated_at" json:"updatedAt"`
 }
 
 // Token structure in database
@@ -35,6 +36,7 @@ type Token struct {
 	Manage    int    `db:"manage" json:"manage"`
 	Admin     int    `db:"admin" json:"admin"`
 	CreatedAt string `db:"created_at" json:"createdAt"`
+	UpdatedAt string `db:"updated_at" json:"updatedAt"`
 	ExpireAt  string `db:"expire_at" json:"expireAt"`
 }
 
@@ -45,6 +47,7 @@ type Gateway struct {
 	Name      sql.NullString `db:"name" json:"name"`
 	Model     string         `db:"model" json:"model"`
 	CreatedAt string         `db:"created_at" json:"createdAt"`
+	UpdatedAt string         `db:"updated_at" json:"updatedAt"`
 	CreatorID sql.NullString `db:"creator_id" json:"creatorId"`
 }
 
@@ -54,29 +57,34 @@ type Home struct {
 	Name      string `db:"name" json:"name"`
 	Address   string `db:"address" json:"address"`
 	CreatedAt string `db:"created_at" json:"createdAt"`
+	UpdatedAt string `db:"updated_at" json:"updatedAt"`
 	CreatorID string `db:"creator_id" json:"creatorId"`
 }
 
 // Room structure in database
 type Room struct {
-	ID        string `db:"id" json:"id"`
-	Name      string `db:"name" json:"name"`
-	HomeID    string `db:"home_id" json:"homeId"`
-	CreatedAt string `db:"created_at" json:"createdAt"`
-	CreatorID string `db:"creator_id" json:"creatorId"`
+	ID        string         `db:"id" json:"id"`
+	Name      string         `db:"name" json:"name"`
+	Icon      sql.NullString `db:"icon" json:"icon"`
+	HomeID    string         `db:"home_id" json:"homeId"`
+	CreatedAt string         `db:"created_at" json:"createdAt"`
+	UpdatedAt string         `db:"updated_at" json:"updatedAt"`
+	CreatorID string         `db:"creator_id" json:"creatorId"`
 }
 
 // Device structure in database
 type Device struct {
-	ID           string `db:"id" json:"id"`
-	GatewayID    string `db:"gateway_id" json:"gatewayId"`
-	Name         string `db:"name" json:"name"`
-	PhysicalID   string `db:"physical_id" json:"physicalId"`
-	PhysicalName string `db:"physical_name" json:"physicalName"`
-	Plugin       string `db:"plugin" json:"plugin"`
-	RoomID       string `db:"room_id" json:"roomId"`
-	CreatedAt    string `db:"created_at" json:"createdAt"`
-	CreatorID    string `db:"creator_id" json:"creatorId"`
+	ID           string         `db:"id" json:"id"`
+	GatewayID    string         `db:"gateway_id" json:"gatewayId"`
+	Name         string         `db:"name" json:"name"`
+	Icon         sql.NullString `db:"icon" json:"icon"`
+	PhysicalID   string         `db:"physical_id" json:"physicalId"`
+	PhysicalName string         `db:"physical_name" json:"physicalName"`
+	Plugin       string         `db:"plugin" json:"plugin"`
+	RoomID       string         `db:"room_id" json:"roomId"`
+	CreatedAt    string         `db:"created_at" json:"createdAt"`
+	UpdatedAt    string         `db:"updated_at" json:"updatedAt"`
+	CreatorID    string         `db:"creator_id" json:"creatorId"`
 }
 
 // Permission structure in database
@@ -89,6 +97,7 @@ type Permission struct {
 	Write     int    `db:"write" json:"write"`
 	Manage    int    `db:"manage" json:"manage"`
 	Admin     int    `db:"admin" json:"admin"`
+	CreatedAt string `db:"created_at" json:"createdAt"`
 	UpdatedAt string `db:"updated_at" json:"updatedAt"`
 }
 
@@ -106,6 +115,7 @@ type Automation struct {
 	ActionValue     []string `db:"action_value" json:"actionValue"`
 	Status          bool     `db:"status" json:"status"`
 	CreatedAt       string   `db:"created_at" json:"createdAt"`
+	UpdatedAt       string   `db:"updated_at" json:"updatedAt"`
 	CreatorID       string   `db:"creator_id" json:"creatorId"`
 }
 
@@ -148,10 +158,12 @@ func SyncDB() {
 	var gateway Gateway
 	err := DB.Get(&gateway, `SELECT * FROM gateways`)
 	if err == nil && gateway.ID != "" {
+		log.Panic(err)
 		return
 	}
 	resp, err := http.Get("http://localhost:3000/v1/gateway/sync/" + utils.GetIDFile())
 	if err != nil {
+		log.Panic(err)
 		return
 	}
 	defer resp.Body.Close()
@@ -160,35 +172,35 @@ func SyncDB() {
 	err = json.Unmarshal(body, &dataMarshalised)
 	utils.Check(err, "")
 
-	_, err = DB.NamedExec("INSERT INTO gateways (id, home_id, name, model, created_at, creator_id) VALUES (:id, :home_id, :name, :model, :created_at, :creator_id)", dataMarshalised.Data.Gateway)
+	_, err = DB.NamedExec("INSERT INTO gateways (id, home_id, name, model, created_at, updated_at, creator_id) VALUES (:id, :home_id, :name, :model, :created_at, :updated_at, :creator_id)", dataMarshalised.Data.Gateway)
 	utils.Check(err, "")
 
-	_, err = DB.NamedExec("INSERT INTO homes (id, name, address, created_at, creator_id) VALUES (:id, :name, :address, :created_at, :creator_id)", dataMarshalised.Data.Home)
+	_, err = DB.NamedExec("INSERT INTO homes (id, name, address, created_at, updated_at, creator_id) VALUES (:id, :name, :address, :created_at, :updated_at, :creator_id)", dataMarshalised.Data.Home)
 	utils.Check(err, "")
 
 	for _, user := range dataMarshalised.Data.Users {
-		_, err = DB.NamedExec("INSERT INTO users (id, firstname, lastname, email, password, birthdate, created_at) VALUES (:id, :firstname, :lastname, :email, :password, :birthdate, :created_at)", user)
+		_, err = DB.NamedExec("INSERT INTO users (id, firstname, lastname, email, password, birthdate, created_at, updated_at) VALUES (:id, :firstname, :lastname, :email, :password, :birthdate, :created_at, :updated_at)", user)
 		utils.Check(err, "")
 	}
 
 	for _, automation := range dataMarshalised.Data.Automations {
-		_, err := DB.Exec("INSERT INTO automations (id, name, trigger, trigger_key, trigger_value, trigger_operator, action, action_call, action_value, status, created_at, creator_id, home_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
-			automation.ID, automation.Name, pq.Array(automation.Trigger), pq.Array(automation.TriggerKey), pq.Array(automation.TriggerValue), pq.Array(automation.TriggerOperator), pq.Array(automation.Action), pq.Array(automation.ActionCall), pq.Array(automation.ActionValue), automation.Status, automation.CreatedAt, automation.CreatorID, automation.HomeID)
+		_, err := DB.Exec("INSERT INTO automations (id, home_id, name, trigger, trigger_key, trigger_value, trigger_operator, action, action_call, action_value, status, created_at, updated_at, creator_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
+			automation.ID, automation.HomeID, automation.Name, pq.Array(automation.Trigger), pq.Array(automation.TriggerKey), pq.Array(automation.TriggerValue), pq.Array(automation.TriggerOperator), pq.Array(automation.Action), pq.Array(automation.ActionCall), pq.Array(automation.ActionValue), automation.Status, automation.CreatedAt, automation.UpdatedAt, automation.CreatorID)
 		utils.Check(err, "")
 	}
 
 	for _, device := range dataMarshalised.Data.Devices {
-		_, err = DB.NamedExec("INSERT INTO devices (id, gateway_id, name, physical_id, physical_name, plugin, room_id, created_at, creator_id) VALUES (:id, :gateway_id, :name, :physical_id, :physical_name,:plugin, :room_id, :created_at, :creator_id)", device)
+		_, err = DB.NamedExec("INSERT INTO devices (id, gateway_id, name, icon, physical_id, physical_name, plugin, room_id, created_at, updated_at, creator_id) VALUES (:id, :gateway_id, :name, :icon, :physical_id, :physical_name,:plugin, :room_id, :created_at, :updated_at, :creator_id)", device)
 		utils.Check(err, "")
 	}
 
 	for _, room := range dataMarshalised.Data.Rooms {
-		_, err = DB.NamedExec("INSERT INTO rooms (id, name, home_id, created_at, creator_id) VALUES (:id, :name, :home_id, :created_at, :creator_id)", room)
+		_, err = DB.NamedExec("INSERT INTO rooms (id, name, icon, home_id, created_at, updated_at, creator_id) VALUES (:id, :name, :icon, :home_id, :created_at, :updated_at, :creator_id)", room)
 		utils.Check(err, "")
 	}
 
 	for _, permission := range dataMarshalised.Data.Permissions {
-		_, err = DB.NamedExec("INSERT INTO permissions (id, user_id, type, type_id, read, write, manage, admin, updated_at) VALUES (:id, :user_id, :type, :type_id, :read, :write, :manage, :admin, :updated_at)", permission)
+		_, err = DB.NamedExec("INSERT INTO permissions (id, user_id, type, type_id, read, write, manage, admin, created_at, updated_at) VALUES (:id, :user_id, :type, :type_id, :read, :write, :manage, :admin, :created_at, :updated_at)", permission)
 		utils.Check(err, "")
 	}
 

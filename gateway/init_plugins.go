@@ -10,9 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ItsJimi/casa-gateway/utils"
 	"github.com/getcasa/sdk"
-	"github.com/lib/pq"
 )
 
 // Plugin define structure of plugin
@@ -81,49 +79,49 @@ func worker(plugin Plugin) {
 		res := plugin.OnData()
 
 		if res != nil {
-			fmt.Println(plugin.Name)
 			physicalName := strings.ToLower(reflect.TypeOf(res).String()[strings.Index(reflect.TypeOf(res).String(), ".")+1:])
 			val := reflect.ValueOf(res).Elem()
-			id := val.FieldByName(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).FieldID).String()
-			field := val.FieldByName(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Field).String()
+			// id := val.FieldByName(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).FieldID).String()
+			// field := val.FieldByName(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Field).String()
 			// TODO: Save data get
 
 			fmt.Println("------------")
+			fmt.Println(physicalName)
 			for i := 0; i < val.NumField(); i++ {
 				fmt.Println(val.Type().Field(i).Name)
 				fmt.Println(val.Field(i))
 			}
 			fmt.Println("------------")
 
-			rows, err := DB.Queryx("SELECT * FROM automations WHERE UPPER(SUBSTR(trigger, INSTR(trigger, ' ')+1)) LIKE UPPER('%" + id + "%')")
-			fmt.Println(id)
-			if err == nil {
+			// rows, err := DB.Queryx("SELECT * FROM automations WHERE UPPER(SUBSTR(trigger, INSTR(trigger, ' ')+1)) LIKE UPPER('%" + id + "%')")
+			// if err == nil {
+			// 	fmt.Println(id)
 
-				for rows.Next() {
+			// 	for rows.Next() {
 
-					var auto automationStruct
-					err := rows.Scan(&auto.ID, &auto.HomeID, &auto.Name, pq.Array(&auto.Trigger), pq.Array(&auto.TriggerValue), pq.Array(&auto.Action), pq.Array(&auto.ActionValue), &auto.Status, &auto.CreatedAt, &auto.CreatorID)
-					if err == nil {
-						count := 0
+			// 		var auto automationStruct
+			// 		err := rows.Scan(&auto.ID, &auto.HomeID, &auto.Name, pq.Array(&auto.Trigger), pq.Array(&auto.TriggerValue), pq.Array(&auto.Action), pq.Array(&auto.ActionValue), &auto.Status, &auto.CreatedAt, &auto.CreatorID)
+			// 		if err == nil {
+			// 			count := 0
 
-						for i := 0; i < len(auto.Trigger); i++ {
-							if auto.Trigger[i] == id && auto.TriggerValue[i] == field {
-								count++
-							}
-						}
+			// 			for i := 0; i < len(auto.Trigger); i++ {
+			// 				if auto.Trigger[i] == id && auto.TriggerValue[i] == field {
+			// 					count++
+			// 				}
+			// 			}
 
-						if count == len(auto.Trigger) {
-							for i := 0; i < len(auto.Action); i++ {
-								var device Device
-								err = DB.Get(&device, `SELECT * FROM devices WHERE physical_id = $1`, auto.Action[i])
-								if err == nil {
-									pluginFromName(device.Plugin).CallAction(device.PhysicalName, []byte(`{"address": "`+auto.Action[i]+`"}`))
-								}
-							}
-						}
-					}
-				}
-			}
+			// 			if count == len(auto.Trigger) {
+			// 				for i := 0; i < len(auto.Action); i++ {
+			// 					var device Device
+			// 					err = DB.Get(&device, `SELECT * FROM devices WHERE physical_id = $1`, auto.Action[i])
+			// 					if err == nil {
+			// 						pluginFromName(device.Plugin).CallAction(device.PhysicalName, []byte(`{"address": "`+auto.Action[i]+`"}`))
+			// 					}
+			// 				}
+			// 			}
+			// 		}
+			// 	}
+			// }
 		}
 
 	}

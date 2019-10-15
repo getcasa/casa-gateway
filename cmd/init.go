@@ -28,6 +28,7 @@ var initCmd = &cobra.Command{
 		utils.Check(err, "error")
 		resp, err := http.Post("http://localhost:3000/v1/gateway", "application/json", bytes.NewReader(data))
 		if err != nil {
+			fmt.Println(err)
 			return
 		}
 		defer resp.Body.Close()
