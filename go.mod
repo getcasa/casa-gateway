@@ -18,10 +18,14 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
+	go.uber.org/atomic v1.4.0 // indirect
+	go.uber.org/multierr v1.2.0 // indirect
+	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392
 	golang.org/x/net v0.0.0-20190923162816-aa69164e4478 // indirect
 	golang.org/x/sys v0.0.0-20190924092210-98129a5cf4a0 // indirect
 	golang.org/x/text v0.3.2 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
 
 replace github.com/getcasa/sdk v0.0.0-20190923145410-20bbee062dc8 => ../casa-sdk

@@ -26,15 +26,6 @@ func StartWebServer(port string) {
 	// V1
 	v1 := e.Group("/v1")
 
-	// Signup
-	v1.POST("/signup", SignUp)
-
-	// Signin
-	v1.POST("/signin", SignIn)
-
-	// Check authorization
-	v1.Use(middleware.KeyAuth(IsAuthenticated))
-
 	// Devices
 	v1.GET("/devices", GetDevices)
 	v1.POST("/devices", AddDevice)
