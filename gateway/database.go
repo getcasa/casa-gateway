@@ -18,7 +18,6 @@ type User struct {
 	Firstname string `db:"firstname" json:"firstname"`
 	Lastname  string `db:"lastname" json:"lastname"`
 	Email     string `db:"email" json:"email"`
-	Password  string `db:"password" json:"-"`
 	Birthdate string `db:"birthdate" json:"birthdate"`
 	CreatedAt string `db:"created_at" json:"createdAt"`
 	UpdatedAt string `db:"updated_at" json:"updatedAt"`
@@ -80,6 +79,7 @@ type Device struct {
 	Icon         sql.NullString `db:"icon" json:"icon"`
 	PhysicalID   string         `db:"physical_id" json:"physicalId"`
 	PhysicalName string         `db:"physical_name" json:"physicalName"`
+	Config       string         `db:"config" json:"config"`
 	Plugin       string         `db:"plugin" json:"plugin"`
 	RoomID       string         `db:"room_id" json:"roomId"`
 	CreatedAt    string         `db:"created_at" json:"createdAt"`
@@ -197,7 +197,7 @@ func SyncDB() {
 	}
 
 	for _, user := range dataMarshalised.Data.Users {
-		_, err = DB.NamedExec("INSERT INTO users (id, firstname, lastname, email, password, birthdate, created_at, updated_at) VALUES (:id, :firstname, :lastname, :email, :password, :birthdate, :created_at, :updated_at)", user)
+		_, err = DB.NamedExec("INSERT INTO users (id, firstname, lastname, email, birthdate, created_at, updated_at) VALUES (:id, :firstname, :lastname, :email, :birthdate, :created_at, :updated_at)", user)
 		if err != nil {
 			contextLogger := logger.WithFields(logger.Fields{"code": "CGGDSDB005"})
 			contextLogger.Panicf("%s", err.Error())
@@ -216,7 +216,7 @@ func SyncDB() {
 	}
 
 	for _, device := range dataMarshalised.Data.Devices {
-		_, err = DB.NamedExec("INSERT INTO devices (id, gateway_id, name, icon, physical_id, physical_name, plugin, room_id, created_at, updated_at, creator_id) VALUES (:id, :gateway_id, :name, :icon, :physical_id, :physical_name,:plugin, :room_id, :created_at, :updated_at, :creator_id)", device)
+		_, err = DB.NamedExec("INSERT INTO devices (id, gateway_id, name, icon, physical_id, physical_name, config, plugin, room_id, created_at, updated_at, creator_id) VALUES (:id, :gateway_id, :name, :icon, :physical_id, :physical_name, :config, :plugin, :room_id, :created_at, :updated_at, :creator_id)", device)
 		if err != nil {
 			contextLogger := logger.WithFields(logger.Fields{"code": "CGGDSDB007"})
 			contextLogger.Panicf("%s", err.Error())

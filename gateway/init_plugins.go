@@ -6,10 +6,12 @@ import (
 	"path/filepath"
 	"plugin"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/ItsJimi/casa-gateway/utils"
 	"github.com/getcasa/sdk"
 )
 
@@ -56,16 +58,20 @@ func pluginFromName(name string) *Plugin {
 }
 
 type automationStruct struct {
-	ID           string
-	HomeID       string `db:"home_id" json:"homeID"`
-	Name         string
-	Trigger      []string
-	TriggerValue []string `db:"trigger_value" json:"triggerValue"`
-	Action       []string
-	ActionValue  []string `db:"action_value" json:"actionValue"`
-	Status       bool
-	CreatedAt    string `db:"created_at" json:"createdAt"`
-	CreatorID    string `db:"creator_id" json:"creatorID"`
+	ID              string
+	HomeID          string `db:"home_id" json:"homeID"`
+	Name            string
+	Trigger         []string
+	TriggerKey      []string
+	TriggerOperator []string
+	TriggerValue    []string `db:"trigger_value" json:"triggerValue"`
+	Action          []string
+	ActionCall      []string
+	ActionValue     []string `db:"action_value" json:"actionValue"`
+	Status          bool
+	CreatedAt       string `db:"created_at" json:"createdAt"`
+	UpdatedAt       string `db:"updated_at" json:"updatedAt"`
+	CreatorID       string `db:"creator_id" json:"creatorID"`
 }
 
 func worker(plugin Plugin) {
@@ -81,52 +87,107 @@ func worker(plugin Plugin) {
 		if res != nil {
 			physicalName := strings.ToLower(reflect.TypeOf(res).String()[strings.Index(reflect.TypeOf(res).String(), ".")+1:])
 			val := reflect.ValueOf(res).Elem()
-			// id := val.FieldByName(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).FieldID).String()
-			// field := val.FieldByName(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Field).String()
-			// TODO: Save data get
+			id := val.FieldByName(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).FieldID).String()
 
 			fmt.Println("------------")
+			fmt.Println(id)
 			fmt.Println(physicalName)
-			for i := 0; i < val.NumField(); i++ {
-				fmt.Println(val.Type().Field(i).Name)
-				fmt.Println(val.Field(i))
+			for j := 0; j < val.NumField(); j++ {
+				fmt.Println(val.Type().Field(j).Name)
+				fmt.Println(val.Field(j))
 			}
 			fmt.Println("------------")
 
-			// rows, err := DB.Queryx("SELECT * FROM automations WHERE UPPER(SUBSTR(trigger, INSTR(trigger, ' ')+1)) LIKE UPPER('%" + id + "%')")
-			// if err == nil {
-			// 	fmt.Println(id)
+			for i := 0; i < len(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Fields); i++ {
 
-			// 	for rows.Next() {
+				field := utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Fields[i].Name
+				typeField := utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Fields[i].Type
+				// TODO: Save data get
 
-			// 		var auto automationStruct
-			// 		err := rows.Scan(&auto.ID, &auto.HomeID, &auto.Name, pq.Array(&auto.Trigger), pq.Array(&auto.TriggerValue), pq.Array(&auto.Action), pq.Array(&auto.ActionValue), &auto.Status, &auto.CreatedAt, &auto.CreatorID)
-			// 		if err == nil {
-			// 			count := 0
-
-			// 			for i := 0; i < len(auto.Trigger); i++ {
-			// 				if auto.Trigger[i] == id && auto.TriggerValue[i] == field {
-			// 					count++
-			// 				}
-			// 			}
-
-			// 			if count == len(auto.Trigger) {
-			// 				for i := 0; i < len(auto.Action); i++ {
-			// 					var device Device
-			// 					err = DB.Get(&device, `SELECT * FROM devices WHERE physical_id = $1`, auto.Action[i])
-			// 					if err == nil {
-			// 						pluginFromName(device.Plugin).CallAction(device.PhysicalName, []byte(`{"address": "`+auto.Action[i]+`"}`))
-			// 					}
-			// 				}
-			// 			}
-			// 		}
-			// 	}
-			// }
+				var device Device
+				err := DB.Get(&device, `SELECT * FROM devices WHERE physical_id = $1`, id)
+				if err == nil && val.FieldByName(field).String() != "" {
+					row, err := DB.Exec("INSERT INTO datas (id, device_id, field, value_nbr, value_str, value_bool) VALUES ($1, $2, $3, $4, $5, $6)",
+						utils.NewULID().String(),
+						device.ID,
+						field,
+						func() float64 {
+							fmt.Println(val.FieldByName(field).String())
+							if typeField == "int" {
+								nbr, err := strconv.ParseFloat(val.FieldByName(field).String(), 32)
+								if err != nil {
+									return 0
+								}
+								return nbr
+							}
+							return 0
+						}(),
+						func() string {
+							if typeField == "string" {
+								return val.FieldByName(field).String()
+							}
+							return ""
+						}(),
+						func() bool {
+							if typeField == "bool" {
+								return val.FieldByName(field).Interface().(bool)
+							}
+							return false
+						}())
+					fmt.Println(row)
+					fmt.Println(err)
+				}
+			}
 		}
-
 	}
 
 	go worker(plugin)
+
+}
+
+func automations() {
+
+	// rows, err := DB.Queryx("SELECT * FROM automations WHERE UPPER(SUBSTR(trigger, INSTR(trigger, ' ')+1)) LIKE UPPER('%" + device.ID + "%')")
+	// if err == nil {
+	// 	fmt.Println(id)
+
+	// 	for rows.Next() {
+
+	// 		var auto automationStruct
+	// 		err := rows.Scan(&auto.ID, &auto.HomeID, &auto.Name, pq.Array(&auto.Trigger), pq.Array(&auto.TriggerKey), pq.Array(&auto.TriggerValue), pq.Array(&auto.TriggerOperator), pq.Array(&auto.Action), pq.Array(&auto.ActionCall), pq.Array(&auto.ActionValue), &auto.Status, &auto.CreatedAt, &auto.UpdatedAt, &auto.CreatorID)
+	// 		if err == nil {
+	// 			count := 0
+
+	// 			for i := 0; i < len(auto.Trigger); i++ {
+	// 				var device Device
+	// 				// field := val.FieldByName(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Fields[0].Name).String()
+	// 				field := val.FieldByName(auto.TriggerKey[i]).String()
+	// 				// test := utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Fields[0].Name
+	// 				fmt.Println("XXXX")
+	// 				fmt.Println(auto.TriggerValue[i])
+	// 				// fmt.Println(test)
+	// 				fmt.Println(field)
+	// 				fmt.Println("XXXX")
+
+	// 				err = DB.Get(&device, `SELECT * FROM devices WHERE id = $1`, auto.Trigger[i])
+	// 				if device.PhysicalID == id && auto.TriggerValue[i] == field {
+	// 					count++
+	// 				}
+	// 			}
+
+	// 			if count == len(auto.Trigger) {
+	// 				for i := 0; i < len(auto.Action); i++ {
+	// 					var device Device
+	// 					err = DB.Get(&device, `SELECT * FROM devices WHERE id = $1`, auto.Action[i])
+	// 					if err == nil {
+	// 						pluginFromName(device.Plugin).CallAction(auto.ActionCall[i], []byte(device.Config))
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+
 }
 
 // StartPlugins load plugins
