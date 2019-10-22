@@ -50,3 +50,13 @@ func FindTriggerFromName(triggers []sdk.Trigger, name string) sdk.Trigger {
 	}
 	return sdk.Trigger{}
 }
+
+// FindFieldFromName find field with name field
+func FindFieldFromName(fields []sdk.Field, name string) sdk.Field {
+	for _, field := range fields {
+		if field.Name == name {
+			return field
+		}
+	}
+	return sdk.Field{}
+}
