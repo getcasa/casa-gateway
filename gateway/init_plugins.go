@@ -155,7 +155,7 @@ func worker(plugin Plugin) {
 
 func automations() {
 
-	for range time.Tick(1 * time.Second) {
+	for range time.Tick(250 * time.Millisecond) {
 		rows, err := DB.Queryx("SELECT * FROM automations")
 		if err == nil {
 			for rows.Next() {
@@ -168,21 +168,61 @@ func automations() {
 						var device Device
 						err = DB.Get(&device, `SELECT * FROM devices WHERE id = $1`, auto.Trigger[i])
 						field := utils.FindFieldFromName(utils.FindTriggerFromName(pluginFromName(device.Plugin).Config.Triggers, device.PhysicalName).Fields, auto.TriggerKey[i])
-						// field := val.FieldByName(utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Fields[0].Name).String()
-						// field := val.FieldByName(auto.TriggerKey[i]).String()
-						// fmt.Println(field)
 
-						// if field.Direct {
-						// 	queue := FindDataFromID(queues, device.ID)
-						// 	if queue.DeviceID == device.ID {
-
-						// 	}
-						// 	fmt.Println()
-						// }
-						// if device.PhysicalID == id && auto.TriggerValue[i] == field {
-						// 	count++
-						// }
+						if field.Direct {
+							queue := FindDataFromID(queues, device.ID)
+							if queue.DeviceID == device.ID {
+								switch field.Type {
+								case "string":
+									if queue.ValueStr == auto.TriggerValue[i] {
+										count++
+									}
+								case "int":
+									triggerValue, err := strconv.ParseFloat(string(auto.TriggerValue[i]), 64)
+									if err == nil {
+										if queue.ValueNbr == triggerValue {
+											count++
+										}
+									}
+								case "bool":
+								default:
+								}
+							}
+						} else if device.ID == auto.Trigger[i] {
+							var data Datas
+							err = DB.Get(&data, `SELECT * FROM datas WHERE device_id = $1 AND field = $2 ORDER BY created_at DESC`, device.ID, auto.TriggerKey[i])
+							switch field.Type {
+							case "string":
+								if data.ValueStr == auto.TriggerValue[i] {
+									count++
+								}
+							case "int":
+								firstchar := string(auto.TriggerValue[i][0])
+								value, err := strconv.ParseFloat(string(auto.TriggerValue[i][1:]), 64)
+								if err == nil {
+									switch firstchar {
+									case ">":
+										if data.ValueNbr > value {
+											count++
+										}
+									case "<":
+										if data.ValueNbr < value {
+											count++
+										}
+									case "=":
+										if data.ValueNbr == value {
+											count++
+										}
+									default:
+									}
+								}
+							case "bool":
+							default:
+							}
+						}
 					}
+
+					// fmt.Println(count)
 
 					if count == len(auto.Trigger) {
 						for i := 0; i < len(auto.Action); i++ {
@@ -196,11 +236,8 @@ func automations() {
 				}
 			}
 		}
-		fmt.Println(queues)
 		queues = nil
 	}
-
-	// rows, err := DB.Queryx("SELECT * FROM automations WHERE UPPER(SUBSTR(trigger, INSTR(trigger, ' ')+1)) LIKE UPPER('%" + device.ID + "%')")
 
 	go automations()
 }
