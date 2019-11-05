@@ -3,6 +3,7 @@ package gateway
 import (
 	"net/http"
 
+	"github.com/getcasa/sdk"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 )
@@ -29,6 +30,15 @@ func StartWebServer(port string) {
 		return c.JSON(http.StatusOK, MessageResponse{
 			Message: "Welcome to Casa Gateway v" + Version,
 		})
+	})
+
+	v1.GET("/configs", func(c echo.Context) error {
+		var configs []sdk.Configuration
+		for _, plugin := range Plugins {
+			configs = append(configs, *plugin.Config)
+		}
+
+		return c.JSON(http.StatusOK, configs)
 	})
 
 	e.Logger.Fatal(e.Start(":" + port))

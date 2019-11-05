@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"path/filepath"
 	"plugin"
@@ -31,20 +30,15 @@ type Plugin struct {
 	Stop       bool
 }
 
-type websocketMessage struct {
-	Action string
-	Body   interface{}
-}
-
-var plugins []Plugin
+// Plugins list all loaded plugins
+var Plugins []Plugin
 var wg sync.WaitGroup
-var c *websocket.Conn
 
 func findPluginFile() {
 	dir := "./plugins"
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if filepath.Ext(path) == ".so" {
-			plugins = append(plugins, Plugin{
+			Plugins = append(Plugins, Plugin{
 				Name: strings.Replace(info.Name(), ".so", "", -1),
 				File: path,
 				Stop: false,
@@ -57,8 +51,9 @@ func findPluginFile() {
 	}
 }
 
-func pluginFromName(name string) *Plugin {
-	for _, plugin := range plugins {
+// PluginFromName return plugin from it name
+func PluginFromName(name string) *Plugin {
+	for _, plugin := range Plugins {
 		if plugin.Name == name {
 			return &plugin
 		}
@@ -127,12 +122,13 @@ func worker(plugin Plugin) {
 					}
 
 					// Send Websocket message to server
-					message := websocketMessage{
+					byteMessage, _ := json.Marshal(queue)
+					message := WebsocketMessage{
 						Action: "newData",
-						Body:   queue,
+						Body:   byteMessage,
 					}
-					byteMessage, _ := json.Marshal(message)
-					err := c.WriteMessage(websocket.TextMessage, []byte(byteMessage))
+					byteMessage, _ = json.Marshal(message)
+					err := WS.WriteMessage(websocket.TextMessage, byteMessage)
 					if err != nil {
 						log.Println("write:", err)
 						return
@@ -151,11 +147,12 @@ func StartPlugins() {
 	findPluginFile()
 
 	start := time.Now()
-	wg.Add(len(plugins))
-	for i := 0; i < len(plugins); i++ {
+	wg.Add(len(Plugins))
+
+	for i := 0; i < len(Plugins); i++ {
 		go func(i int) {
 			defer wg.Done()
-			plug, err := plugin.Open(plugins[i].File)
+			plug, err := plugin.Open(Plugins[i].File)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -166,59 +163,54 @@ func StartPlugins() {
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			plugins[i].Config = conf.(*sdk.Configuration)
+			Plugins[i].Config = conf.(*sdk.Configuration)
 
 			onStart, err := plug.Lookup("OnStart")
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			plugins[i].OnStart = onStart.(func())
+			Plugins[i].OnStart = onStart.(func())
 
 			onStop, err := plug.Lookup("OnStop")
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			plugins[i].OnStop = onStop.(func())
+			Plugins[i].OnStop = onStop.(func())
 
 			onData, err := plug.Lookup("OnData")
 			if err == nil {
-				plugins[i].OnData = onData.(func() interface{})
+				Plugins[i].OnData = onData.(func() interface{})
 			}
 
 			callAction, err := plug.Lookup("CallAction")
 			if err == nil {
-				plugins[i].CallAction = callAction.(func(string, []byte))
+				Plugins[i].CallAction = callAction.(func(string, []byte))
 			}
 
-			plugins[i].OnStart()
-			fmt.Println(plugins[i].Name)
+			Plugins[i].OnStart()
+
+			fmt.Println(Plugins[i].Name)
 		}(i)
 	}
 	wg.Wait()
 	t := time.Now()
 	fmt.Println(t.Sub(start))
 
-	u := url.URL{Scheme: "ws", Host: "192.168.1.21:3000", Path: "/v1/ws"}
-	log.Printf("connecting to %s", u.String())
-	var err error
-	c, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Fatal("dial:", err)
-	}
-	err = c.WriteMessage(websocket.TextMessage, []byte("Hello from Gateway"))
-	if err != nil {
-		log.Println("write:", err)
-		return
-	}
+	// Start websocket client
+	StartWebsocketClient()
 
-	for _, plugin := range plugins {
+	// Start plugins workers to get data
+	for _, plugin := range Plugins {
 		wg.Add(1)
 		go worker(plugin)
 	}
+
 	wg.Wait()
-	for _, plugin := range plugins {
+
+	// Stop all plugins
+	for _, plugin := range Plugins {
 		plugin.OnStop()
 	}
 }
