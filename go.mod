@@ -3,6 +3,7 @@ module github.com/ItsJimi/casa-gateway
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/getcasa/sdk v0.0.0-20191105095754-6df142bc28a9
+	github.com/gorilla/websocket v1.4.1
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/gommon v0.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect

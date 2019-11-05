@@ -1,7 +1,10 @@
 package gateway
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"plugin"
@@ -13,6 +16,7 @@ import (
 
 	"github.com/ItsJimi/casa-gateway/utils"
 	"github.com/getcasa/sdk"
+	"github.com/gorilla/websocket"
 )
 
 // Plugin define structure of plugin
@@ -27,25 +31,14 @@ type Plugin struct {
 	Stop       bool
 }
 
-type automationStruct struct {
-	ID              string
-	HomeID          string `db:"home_id" json:"homeID"`
-	Name            string
-	Trigger         []string
-	TriggerKey      []string
-	TriggerOperator []string
-	TriggerValue    []string `db:"trigger_value" json:"triggerValue"`
-	Action          []string
-	ActionCall      []string
-	ActionValue     []string `db:"action_value" json:"actionValue"`
-	Status          bool
-	CreatedAt       string `db:"created_at" json:"createdAt"`
-	UpdatedAt       string `db:"updated_at" json:"updatedAt"`
-	CreatorID       string `db:"creator_id" json:"creatorID"`
+type websocketMessage struct {
+	Action string
+	Body   interface{}
 }
 
 var plugins []Plugin
 var wg sync.WaitGroup
+var c *websocket.Conn
 
 func findPluginFile() {
 	dir := "./plugins"
@@ -102,7 +95,6 @@ func worker(plugin Plugin) {
 
 				field := utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Fields[i].Name
 				typeField := utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Fields[i].Type
-				// TODO: Save data get
 
 				if val.FieldByName(field).String() != "" {
 					queue := Datas{
@@ -133,8 +125,18 @@ func worker(plugin Plugin) {
 							return false
 						}(),
 					}
-					// TODO: Send a websocket with queue in body
-					fmt.Println(queue)
+
+					// Send Websocket message to server
+					message := websocketMessage{
+						Action: "newData",
+						Body:   queue,
+					}
+					byteMessage, _ := json.Marshal(message)
+					err := c.WriteMessage(websocket.TextMessage, []byte(byteMessage))
+					if err != nil {
+						log.Println("write:", err)
+						return
+					}
 				}
 			}
 		}
@@ -197,6 +199,19 @@ func StartPlugins() {
 	wg.Wait()
 	t := time.Now()
 	fmt.Println(t.Sub(start))
+
+	u := url.URL{Scheme: "ws", Host: "192.168.1.21:3000", Path: "/v1/ws"}
+	log.Printf("connecting to %s", u.String())
+	var err error
+	c, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Fatal("dial:", err)
+	}
+	err = c.WriteMessage(websocket.TextMessage, []byte("Hello from Gateway"))
+	if err != nil {
+		log.Println("write:", err)
+		return
+	}
 
 	for _, plugin := range plugins {
 		wg.Add(1)
