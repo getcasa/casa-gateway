@@ -12,6 +12,9 @@ type MessageResponse struct {
 	Message string `json:"message"`
 }
 
+// Version use SemVer
+var Version = "0.0.1"
+
 // StartWebServer start echo server
 func StartWebServer(port string) {
 	e := echo.New()
@@ -19,12 +22,14 @@ func StartWebServer(port string) {
 	e.Pre(middleware.RemoveTrailingSlash())
 	e.Use(middleware.CORS())
 
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, World!")
-	})
-
 	// V1
-	// v1 := e.Group("/v1")
+	v1 := e.Group("/v1")
+
+	v1.GET("/", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, MessageResponse{
+			Message: "Welcome to Casa Gateway v" + Version,
+		})
+	})
 
 	e.Logger.Fatal(e.Start(":" + port))
 }
