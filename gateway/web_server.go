@@ -24,11 +24,7 @@ func StartWebServer(port string) {
 	})
 
 	// V1
-	v1 := e.Group("/v1")
-
-	// Devices
-	v1.GET("/devices", GetDevices)
-	v1.POST("/devices", AddDevice)
+	// v1 := e.Group("/v1")
 
 	e.Logger.Fatal(e.Start(":" + port))
 }
