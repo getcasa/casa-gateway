@@ -45,7 +45,6 @@ type automationStruct struct {
 }
 
 var plugins []Plugin
-var queues []Datas
 var wg sync.WaitGroup
 
 func findPluginFile() {
@@ -134,10 +133,8 @@ func worker(plugin Plugin) {
 							return false
 						}(),
 					}
-					if utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Fields[i].Direct {
-						queues = append(queues, queue)
-					}
 					// TODO: Send a websocket with queue in body
+					fmt.Println(queue)
 				}
 			}
 		}
