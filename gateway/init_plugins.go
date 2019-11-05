@@ -13,7 +13,6 @@ import (
 
 	"github.com/ItsJimi/casa-gateway/utils"
 	"github.com/getcasa/sdk"
-	"github.com/lib/pq"
 )
 
 // Plugin define structure of plugin
@@ -106,12 +105,10 @@ func worker(plugin Plugin) {
 				typeField := utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Fields[i].Type
 				// TODO: Save data get
 
-				var device Device
-				err := DB.Get(&device, `SELECT * FROM devices WHERE physical_id = $1`, id)
-				if err == nil && val.FieldByName(field).String() != "" {
+				if val.FieldByName(field).String() != "" {
 					queue := Datas{
 						ID:       utils.NewULID().String(),
-						DeviceID: device.ID,
+						DeviceID: id,
 						Field:    field,
 						ValueNbr: func() float64 {
 							fmt.Println(val.FieldByName(field).String())
@@ -140,10 +137,7 @@ func worker(plugin Plugin) {
 					if utils.FindTriggerFromName(plugin.Config.Triggers, physicalName).Fields[i].Direct {
 						queues = append(queues, queue)
 					}
-					row, err := DB.Exec("INSERT INTO datas (id, device_id, field, value_nbr, value_str, value_bool) VALUES ($1, $2, $3, $4, $5, $6)",
-						queue.ID, queue.DeviceID, queue.Field, queue.ValueNbr, queue.ValueStr, queue.ValueBool)
-					fmt.Println(row)
-					fmt.Println(err)
+					// TODO: Send a websocket with queue in body
 				}
 			}
 		}
@@ -151,105 +145,6 @@ func worker(plugin Plugin) {
 
 	go worker(plugin)
 
-}
-
-func automations() {
-
-	for range time.Tick(250 * time.Millisecond) {
-		rows, err := DB.Queryx("SELECT * FROM automations")
-		if err == nil {
-			for rows.Next() {
-				var auto automationStruct
-				err := rows.Scan(&auto.ID, &auto.HomeID, &auto.Name, pq.Array(&auto.Trigger), pq.Array(&auto.TriggerKey), pq.Array(&auto.TriggerValue), pq.Array(&auto.TriggerOperator), pq.Array(&auto.Action), pq.Array(&auto.ActionCall), pq.Array(&auto.ActionValue), &auto.Status, &auto.CreatedAt, &auto.UpdatedAt, &auto.CreatorID)
-				if err == nil {
-					count := 0
-
-					for i := 0; i < len(auto.Trigger); i++ {
-						var device Device
-						err = DB.Get(&device, `SELECT * FROM devices WHERE id = $1`, auto.Trigger[i])
-						field := utils.FindFieldFromName(utils.FindTriggerFromName(pluginFromName(device.Plugin).Config.Triggers, device.PhysicalName).Fields, auto.TriggerKey[i])
-
-						if field.Direct {
-							queue := FindDataFromID(queues, device.ID)
-							if queue.DeviceID == device.ID {
-								switch field.Type {
-								case "string":
-									if queue.ValueStr == auto.TriggerValue[i] {
-										count++
-									}
-								case "int":
-									triggerValue, err := strconv.ParseFloat(string(auto.TriggerValue[i]), 64)
-									if err == nil {
-										if queue.ValueNbr == triggerValue {
-											count++
-										}
-									}
-								case "bool":
-								default:
-								}
-							}
-						} else if device.ID == auto.Trigger[i] {
-							var data Datas
-							err = DB.Get(&data, `SELECT * FROM datas WHERE device_id = $1 AND field = $2 ORDER BY created_at DESC`, device.ID, auto.TriggerKey[i])
-							switch field.Type {
-							case "string":
-								if data.ValueStr == auto.TriggerValue[i] {
-									count++
-								}
-							case "int":
-								firstchar := string(auto.TriggerValue[i][0])
-								value, err := strconv.ParseFloat(string(auto.TriggerValue[i][1:]), 64)
-								if err == nil {
-									switch firstchar {
-									case ">":
-										if data.ValueNbr > value {
-											count++
-										}
-									case "<":
-										if data.ValueNbr < value {
-											count++
-										}
-									case "=":
-										if data.ValueNbr == value {
-											count++
-										}
-									default:
-									}
-								}
-							case "bool":
-							default:
-							}
-						}
-					}
-
-					// fmt.Println(count)
-
-					if count == len(auto.Trigger) {
-						for i := 0; i < len(auto.Action); i++ {
-							var device Device
-							err = DB.Get(&device, `SELECT * FROM devices WHERE id = $1`, auto.Action[i])
-							if err == nil {
-								pluginFromName(device.Plugin).CallAction(auto.ActionCall[i], []byte(device.Config))
-							}
-						}
-					}
-				}
-			}
-		}
-		queues = nil
-	}
-
-	go automations()
-}
-
-// FindDataFromID find data with name ID
-func FindDataFromID(datas []Datas, ID string) Datas {
-	for _, data := range datas {
-		if data.DeviceID == ID {
-			return data
-		}
-	}
-	return Datas{}
 }
 
 // StartPlugins load plugins
@@ -310,7 +205,6 @@ func StartPlugins() {
 		wg.Add(1)
 		go worker(plugin)
 	}
-	go automations()
 	wg.Wait()
 	for _, plugin := range plugins {
 		plugin.OnStop()
