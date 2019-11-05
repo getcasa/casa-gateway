@@ -119,6 +119,7 @@ type Automation struct {
 	CreatorID       string   `db:"creator_id" json:"creatorId"`
 }
 
+// Datas struct in database
 type Datas struct {
 	ID        string  `db:"id" json:"id"`
 	DeviceID  string  `db:"device_id" json:"deviceId"`
