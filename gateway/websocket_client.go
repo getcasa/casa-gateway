@@ -30,16 +30,16 @@ type ActionMessage struct {
 // WS is the connector to write message across app
 var WS *websocket.Conn
 
-const port = 4353
+const serverPort = 4353
 
 // connectWebsocket connect casa gateway to casa server and retry on fails
-func connectWebsocket() {
+func connectWebsocket(port string) {
 	ips := discoverServer()
 
 	for {
 		var err error
 		for _, ip := range ips {
-			u := url.URL{Scheme: "ws", Host: ip + ":" + strconv.Itoa(port), Path: "/v1/ws"}
+			u := url.URL{Scheme: "ws", Host: ip + ":" + strconv.Itoa(serverPort), Path: "/v1/ws"}
 			WS, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
 			if err != nil {
 				log.Printf("dial err:" + err.Error())
@@ -51,9 +51,10 @@ func connectWebsocket() {
 		break
 	}
 
+	addr := strings.Split(WS.LocalAddr().String(), ":")[0]
 	message := WebsocketMessage{
 		Action: "newConnection",
-		Body:   []byte(""),
+		Body:   []byte(addr + ":" + port),
 	}
 	byteMessage, _ := json.Marshal(message)
 	err := WS.WriteMessage(websocket.TextMessage, byteMessage)
@@ -102,7 +103,7 @@ func discoverServer() []string {
 				go func(i int, ipAddr string) {
 					ip := ipAddr + strconv.Itoa(i)
 					ps := portscanner.NewPortScanner(ip, 3*time.Second, 4)
-					opened := ps.IsOpen(port)
+					opened := ps.IsOpen(serverPort)
 					if opened {
 						ips = append(ips, ip)
 					}
@@ -118,8 +119,8 @@ func discoverServer() []string {
 }
 
 // StartWebsocketClient start a websocket client to send and receive data between casa server and casa gateway
-func StartWebsocketClient() {
-	connectWebsocket()
+func StartWebsocketClient(port string) {
+	connectWebsocket(port)
 
 	// Handle response from server
 	go func() {
@@ -130,7 +131,7 @@ func StartWebsocketClient() {
 
 				// When read error is 1006, retry connection
 				if strings.Contains(err.Error(), "close 1006") {
-					connectWebsocket()
+					connectWebsocket(port)
 					continue
 				}
 				return

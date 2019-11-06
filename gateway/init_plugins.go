@@ -147,7 +147,7 @@ func worker(plugin Plugin) {
 }
 
 // StartPlugins load plugins
-func StartPlugins() {
+func StartPlugins(port string) {
 	findPluginFile()
 
 	start := time.Now()
@@ -203,7 +203,7 @@ func StartPlugins() {
 	fmt.Println(t.Sub(start))
 
 	// Start websocket client
-	StartWebsocketClient()
+	StartWebsocketClient(port)
 
 	// Start plugins workers to get data
 	for _, plugin := range Plugins {
