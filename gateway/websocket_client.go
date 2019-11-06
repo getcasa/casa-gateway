@@ -21,6 +21,7 @@ type WebsocketMessage struct {
 type ActionMessage struct {
 	Plugin string
 	Call   string
+	Config string
 	Params string
 }
 
@@ -108,7 +109,7 @@ func StartWebsocketClient(port string) {
 					continue
 				}
 
-				PluginFromName(action.Plugin).CallAction(action.Call, []byte(action.Params))
+				PluginFromName(action.Plugin).CallAction(action.Call, []byte(action.Params), []byte(action.Config))
 				break
 			default:
 			}
