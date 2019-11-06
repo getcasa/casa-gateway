@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/url"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -27,11 +28,17 @@ var WS *websocket.Conn
 // StartWebsocketClient start a websocket client to send and receive data between casa server and casa gateway
 func StartWebsocketClient() {
 	u := url.URL{Scheme: "ws", Host: "192.168.1.21:3000", Path: "/v1/ws"}
-	log.Printf("connecting to %s", u.String())
-	var err error
-	WS, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Fatal("dial:", err)
+
+	for {
+		var err error
+		WS, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
+		if err != nil {
+			log.Printf("dial err:" + err.Error())
+			log.Printf("wait 5 seconds to redail...")
+			time.Sleep(time.Second * 5)
+			continue
+		}
+		break
 	}
 
 	message := WebsocketMessage{
@@ -39,7 +46,7 @@ func StartWebsocketClient() {
 		Body:   []byte(""),
 	}
 	byteMessage, _ := json.Marshal(message)
-	err = WS.WriteMessage(websocket.TextMessage, byteMessage)
+	err := WS.WriteMessage(websocket.TextMessage, byteMessage)
 	if err != nil {
 		log.Println("write:", err)
 		return
