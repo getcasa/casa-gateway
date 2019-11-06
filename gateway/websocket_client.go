@@ -8,17 +8,20 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// WebsocketMessage define incoming message from casa server, including ActionMessage, etc...
 type WebsocketMessage struct {
 	Action string
 	Body   []byte
 }
 
+// ActionMessage define incoming actions from casa server
 type ActionMessage struct {
 	Plugin string
 	Call   string
 	Params string
 }
 
+// WS is the connector to write message across app
 var WS *websocket.Conn
 
 // StartWebsocketClient start a websocket client to send and receive data between casa server and casa gateway
