@@ -34,8 +34,8 @@ func StartWebServer(port string) {
 
 	v1.GET("/configs", func(c echo.Context) error {
 		var configs []sdk.Configuration
-		for _, plugin := range Plugins {
-			configs = append(configs, *plugin.Config)
+		for _, localPlugin := range LocalPlugins {
+			configs = append(configs, *localPlugin.Config)
 		}
 
 		return c.JSON(http.StatusOK, configs)

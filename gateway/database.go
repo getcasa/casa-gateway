@@ -10,6 +10,7 @@ type User struct {
 	Firstname string `db:"firstname" json:"firstname"`
 	Lastname  string `db:"lastname" json:"lastname"`
 	Email     string `db:"email" json:"email"`
+	Password  string `db:"password" json:"-"`
 	Birthdate string `db:"birthdate" json:"birthdate"`
 	CreatedAt string `db:"created_at" json:"createdAt"`
 	UpdatedAt string `db:"updated_at" json:"updatedAt"`
@@ -40,6 +41,16 @@ type Gateway struct {
 	CreatedAt string         `db:"created_at" json:"createdAt"`
 	UpdatedAt string         `db:"updated_at" json:"updatedAt"`
 	CreatorID sql.NullString `db:"creator_id" json:"creatorId"`
+}
+
+// Plugin structure in database
+type Plugin struct {
+	ID        string `db:"id" json:"id"`
+	GatewayID string `db:"gateway_id" json:"gatewayId"`
+	Name      string `db:"name" json:"name"`
+	Config    string `db:"config" json:"config"`
+	CreatedAt string `db:"created_at" json:"createdAt"`
+	UpdatedAt string `db:"updated_at" json:"updatedAt"`
 }
 
 // Home structure in database

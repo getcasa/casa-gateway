@@ -18,9 +18,9 @@ require (
 	go.uber.org/zap v1.12.0
 	golang.org/x/crypto v0.0.0-20191105034135-c7e5f84aec59 // indirect
 	golang.org/x/net v0.0.0-20191105084925-a882066a44e0 // indirect
-	golang.org/x/sys v0.0.0-20191104094858-e8c54fb511f6 // indirect
+	golang.org/x/sys v0.0.0-20191105231009-c1f44814a5cd // indirect
 	golang.org/x/text v0.3.2 // indirect
-	golang.org/x/tools v0.0.0-20191104232314-dc038396d1f0 // indirect
+	golang.org/x/tools v0.0.0-20191105231337-689d0f08e67a // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
 
