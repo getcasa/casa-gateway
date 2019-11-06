@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/ItsJimi/casa-gateway/gateway"
 	"github.com/spf13/cobra"
 )
 
@@ -15,6 +16,6 @@ var versionCmd = &cobra.Command{
 	Short: "Print the version of Casa",
 	Long:  "Print the version of Casa using SemVer has norm.",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("0.0.1")
+		fmt.Println(gateway.Version)
 	},
 }
