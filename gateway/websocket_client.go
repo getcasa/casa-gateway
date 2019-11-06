@@ -41,11 +41,6 @@ func connectWebsocket() {
 		}
 		break
 	}
-}
-
-// StartWebsocketClient start a websocket client to send and receive data between casa server and casa gateway
-func StartWebsocketClient() {
-	connectWebsocket()
 
 	message := WebsocketMessage{
 		Action: "newConnection",
@@ -57,6 +52,11 @@ func StartWebsocketClient() {
 		log.Println("write:", err)
 		return
 	}
+}
+
+// StartWebsocketClient start a websocket client to send and receive data between casa server and casa gateway
+func StartWebsocketClient() {
+	connectWebsocket()
 
 	// Handle response from server
 	go func() {
