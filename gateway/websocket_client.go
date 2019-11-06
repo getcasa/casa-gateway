@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -32,13 +31,13 @@ var WS *websocket.Conn
 func connectWebsocket(port string) {
 	for {
 		var err error
-		ips := utils.DiscoverServer()
-		if len(ips) == 0 {
+		ip := utils.DiscoverServer()
+		if ip == "" {
 			log.Printf("wait 5 seconds to redail...")
 			time.Sleep(time.Second * 5)
 			continue
 		}
-		u := url.URL{Scheme: "ws", Host: ips[0] + ":" + strconv.Itoa(utils.ServerPort), Path: "/v1/ws"}
+		u := url.URL{Scheme: "ws", Host: ip + ":" + utils.ServerPort, Path: "/v1/ws"}
 		WS, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
 		if err != nil {
 			log.Printf("dial err:" + err.Error())

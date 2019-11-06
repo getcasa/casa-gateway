@@ -12,6 +12,7 @@ import (
 
 	portscanner "github.com/anvie/port-scanner"
 	"github.com/getcasa/sdk"
+	"github.com/labstack/gommon/log"
 	"github.com/oklog/ulid/v2"
 )
 
@@ -78,10 +79,10 @@ func containIPAddress(arr []string, search string) bool {
 var waitg sync.WaitGroup
 
 // ServerPort is the default port use by casa server
-const ServerPort = 4353
+const ServerPort = "4353"
 
 // DiscoverServer get ips of casa servers
-func DiscoverServer() []string {
+func DiscoverServer() string {
 	var ips []string
 	var ipAddresses []string
 	ifaces, err := net.Interfaces()
@@ -109,7 +110,12 @@ func DiscoverServer() []string {
 				go func(i int, ipAddr string) {
 					ip := ipAddr + strconv.Itoa(i)
 					ps := portscanner.NewPortScanner(ip, 3*time.Second, 4)
-					opened := ps.IsOpen(ServerPort)
+					port, err := strconv.Atoi(ServerPort)
+					if err != nil {
+						log.Error(err)
+						return
+					}
+					opened := ps.IsOpen(port)
 					if opened {
 						ips = append(ips, ip)
 					}
@@ -121,5 +127,10 @@ func DiscoverServer() []string {
 		waitg.Wait()
 	}
 
-	return ips
+	var ip string
+	if len(ips) != 0 {
+		ip = ips[0]
+	}
+
+	return ip
 }
