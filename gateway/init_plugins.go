@@ -128,9 +128,14 @@ func worker(plugin Plugin) {
 						Body:   byteMessage,
 					}
 					byteMessage, _ = json.Marshal(message)
+					if WS == nil {
+						go worker(plugin)
+						return
+					}
 					err := WS.WriteMessage(websocket.TextMessage, byteMessage)
 					if err != nil {
 						log.Println("write:", err)
+						go worker(plugin)
 						return
 					}
 				}
@@ -139,7 +144,6 @@ func worker(plugin Plugin) {
 	}
 
 	go worker(plugin)
-
 }
 
 // StartPlugins load plugins

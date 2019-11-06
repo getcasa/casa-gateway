@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -25,9 +26,9 @@ type ActionMessage struct {
 // WS is the connector to write message across app
 var WS *websocket.Conn
 
-// StartWebsocketClient start a websocket client to send and receive data between casa server and casa gateway
-func StartWebsocketClient() {
-	u := url.URL{Scheme: "ws", Host: "192.168.1.21:3000", Path: "/v1/ws"}
+// connectWebsocket connect casa gateway to casa server and retry on fails
+func connectWebsocket() {
+	u := url.URL{Scheme: "ws", Host: "localhost:8080", Path: "/echo"}
 
 	for {
 		var err error
@@ -40,6 +41,11 @@ func StartWebsocketClient() {
 		}
 		break
 	}
+}
+
+// StartWebsocketClient start a websocket client to send and receive data between casa server and casa gateway
+func StartWebsocketClient() {
+	connectWebsocket()
 
 	message := WebsocketMessage{
 		Action: "newConnection",
@@ -58,7 +64,13 @@ func StartWebsocketClient() {
 			_, readMessage, err := WS.ReadMessage()
 			if err != nil {
 				log.Println("read:", err)
-				continue
+
+				// When read error is 1006, retry connection
+				if strings.Contains(err.Error(), "close 1006") {
+					connectWebsocket()
+					continue
+				}
+				return
 			}
 
 			var parsedMessage WebsocketMessage
