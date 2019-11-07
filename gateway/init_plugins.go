@@ -27,7 +27,7 @@ type LocalPlugin struct {
 	OnStart    func([]byte)
 	OnStop     func()
 	OnData     func() interface{}
-	CallAction func(string, []byte, []byte)
+	CallAction func(string, string, []byte, []byte)
 	Stop       bool
 }
 
@@ -208,7 +208,7 @@ func StartPlugins(port string) {
 
 			callAction, err := plug.Lookup("CallAction")
 			if err == nil {
-				LocalPlugins[i].CallAction = callAction.(func(string, []byte, []byte))
+				LocalPlugins[i].CallAction = callAction.(func(string, string, []byte, []byte))
 			}
 
 			// Get plugin to retrieve config from Casa server
