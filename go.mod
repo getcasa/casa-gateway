@@ -16,14 +16,14 @@ require (
 	github.com/valyala/fasttemplate v1.1.0 // indirect
 	go.uber.org/multierr v1.4.0 // indirect
 	go.uber.org/zap v1.12.0
-	golang.org/x/crypto v0.0.0-20191105034135-c7e5f84aec59 // indirect
+	golang.org/x/crypto v0.0.0-20191106202628-ed6320f186d4 // indirect
 	golang.org/x/net v0.0.0-20191105084925-a882066a44e0 // indirect
 	golang.org/x/sys v0.0.0-20191105231009-c1f44814a5cd // indirect
 	golang.org/x/text v0.3.2 // indirect
-	golang.org/x/tools v0.0.0-20191105231337-689d0f08e67a // indirect
+	golang.org/x/tools v0.0.0-20191107010934-f79515f33823 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
 
-replace github.com/getcasa/sdk v0.0.0-20190923145410-20bbee062dc8 => ../casa-sdk
+replace github.com/getcasa/sdk v0.0.0-20191105095754-6df142bc28a9 => ../casa-sdk
 
 go 1.13
