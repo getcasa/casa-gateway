@@ -3,7 +3,6 @@ package gateway
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"plugin"
@@ -13,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ItsJimi/casa-gateway/logger"
 	"github.com/ItsJimi/casa-gateway/utils"
 	"github.com/getcasa/sdk"
 	"github.com/gorilla/websocket"
@@ -98,7 +98,6 @@ func worker(localPlugin LocalPlugin) {
 						DeviceID: id,
 						Field:    field,
 						ValueNbr: func() float64 {
-							fmt.Println(val.FieldByName(field).String())
 							if typeField == "int" {
 								nbr, err := strconv.ParseFloat(val.FieldByName(field).String(), 32)
 								if err != nil {
@@ -135,7 +134,7 @@ func worker(localPlugin LocalPlugin) {
 					}
 					err := WS.WriteMessage(websocket.TextMessage, byteMessage)
 					if err != nil {
-						log.Println("write:", err)
+						logger.WithFields(logger.Fields{"code": "CGGIPW001"}).Errorf("%s", err.Error())
 						go worker(localPlugin)
 						return
 					}
@@ -154,11 +153,10 @@ func StartPlugins(port string) {
 	start := time.Now()
 	wg.Add(len(LocalPlugins))
 
-	for {
+	for range time.Tick(5 * time.Second) {
 		ServerIP = utils.DiscoverServer()
 		if ServerIP == "" {
-			log.Printf("Casa server not found, searching...")
-			time.Sleep(time.Second * 5)
+			logger.WithFields(logger.Fields{}).Debugf("Casa server not found, searching...")
 			continue
 		}
 		break
@@ -169,34 +167,32 @@ func StartPlugins(port string) {
 			defer wg.Done()
 			plug, err := plugin.Open(LocalPlugins[i].File)
 			if err != nil {
-				fmt.Println(err)
+				logger.WithFields(logger.Fields{"code": "CGGIPSP001"}).Errorf("%s", err.Error())
 				os.Exit(1)
 			}
 
 			conf, err := plug.Lookup("Config")
 			if err != nil {
-				fmt.Println(err)
+				logger.WithFields(logger.Fields{"code": "CGGIPSP001"}).Errorf("%s", err.Error())
 				os.Exit(1)
 			}
 			LocalPlugins[i].Config = conf.(*sdk.Configuration)
 
 			init, err := plug.Lookup("Init")
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+			if err == nil {
+				LocalPlugins[i].Init = init.(func() []byte)
 			}
-			LocalPlugins[i].Init = init.(func() []byte)
 
 			onStart, err := plug.Lookup("OnStart")
 			if err != nil {
-				fmt.Println(err)
+				logger.WithFields(logger.Fields{"code": "CGGIPSP001"}).Errorf("%s", err.Error())
 				os.Exit(1)
 			}
 			LocalPlugins[i].OnStart = onStart.(func([]byte))
 
 			onStop, err := plug.Lookup("OnStop")
 			if err != nil {
-				fmt.Println(err)
+				logger.WithFields(logger.Fields{"code": "CGGIPSP002"}).Errorf("%s", err.Error())
 				os.Exit(1)
 			}
 			LocalPlugins[i].OnStop = onStop.(func())
@@ -211,32 +207,36 @@ func StartPlugins(port string) {
 				LocalPlugins[i].CallAction = callAction.(func(string, string, []byte, []byte))
 			}
 
-			// Get plugin to retrieve config from Casa server
-			statusCode, plugin := GetPlugin(LocalPlugins[i].Name)
+			var statusCode int
+			var plugin Plugin
 
-			if statusCode != 200 && statusCode != 404 {
-				fmt.Println("Can't get plugin from casa server")
-				return
-			}
-			if statusCode == 404 {
-				config := LocalPlugins[i].Init()
+			if LocalPlugins[i].Init != nil {
+				// Get plugin to retrieve config from Casa server
+				statusCode, plugin = GetPlugin(LocalPlugins[i].Name)
 
-				plugin = Plugin{
-					Name:   LocalPlugins[i].Name,
-					Config: string(config),
+				if statusCode != 200 && statusCode != 404 {
+					logger.WithFields(logger.Fields{"code": "CGGIPSP003"}).Warnf("Can't get plugin from casa server")
+					return
 				}
+				if statusCode == 404 {
+					config := LocalPlugins[i].Init()
 
-				AddPlugin(plugin)
+					plugin = Plugin{
+						Name:   LocalPlugins[i].Name,
+						Config: string(config),
+					}
+					AddPlugin(plugin)
+				}
 			}
 
 			LocalPlugins[i].OnStart([]byte(plugin.Config))
 
-			fmt.Println(LocalPlugins[i].Name)
+			logger.WithFields(logger.Fields{}).Debugf("%s launched!", LocalPlugins[i].Name)
 		}(i)
 	}
 	wg.Wait()
 	t := time.Now()
-	fmt.Println(t.Sub(start))
+	logger.WithFields(logger.Fields{}).Debugf("Start Plugin Time - %s", t.Sub(start))
 
 	// Start websocket client
 	StartWebsocketClient(port)

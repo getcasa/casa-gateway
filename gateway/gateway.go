@@ -3,20 +3,21 @@ package gateway
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
+	"github.com/ItsJimi/casa-gateway/logger"
 	"github.com/ItsJimi/casa-gateway/utils"
 )
 
+// ServerIP var to save IP address
 var ServerIP string
 
 // RegisterGateway register gateway in casa server
 func RegisterGateway() {
 	ip := utils.DiscoverServer()
 	if ip == "" {
-		fmt.Println("Casa server not found")
+		logger.WithFields(logger.Fields{"code": "CGGGRG001"}).Errorf("Casa server not found")
 		return
 	}
 
@@ -26,13 +27,14 @@ func RegisterGateway() {
 	utils.Check(err, "error")
 	resp, err := http.Post("http://"+ip+":"+utils.ServerPort+"/v1/gateway", "application/json", bytes.NewReader(data))
 	if err != nil {
-		fmt.Println(err)
+		logger.WithFields(logger.Fields{"code": "CGGGRG002"}).Errorf("%s", err.Error())
 		return
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	fmt.Println(string(body))
+	logger.WithFields(logger.Fields{}).Debugf("body: %s", body)
 	if err != nil {
+		logger.WithFields(logger.Fields{"code": "CGGGRG003"}).Errorf("%s", err.Error())
 		return
 	}
 	return
@@ -42,7 +44,7 @@ func RegisterGateway() {
 func GetPlugin(pluginName string) (int, Plugin) {
 	res, err := http.Get("http://" + ServerIP + ":" + utils.ServerPort + "/v1/gateway/" + utils.GetIDFile() + "/plugins/" + pluginName)
 	if err != nil {
-		fmt.Println(err)
+		logger.WithFields(logger.Fields{"code": "CGGGGP001"}).Errorf("%s", err.Error())
 	}
 	defer res.Body.Close()
 
@@ -72,7 +74,7 @@ func AddPlugin(plugin Plugin) int {
 
 	res, err := http.Post("http://"+ServerIP+":"+utils.ServerPort+"/v1/gateway/"+utils.GetIDFile()+"/plugins", "application/json", bytes.NewReader(bytePlugin))
 	if err != nil {
-		fmt.Println(err)
+		logger.WithFields(logger.Fields{"code": "CGGGAP001"}).Errorf("%s", err.Error())
 	}
 	defer res.Body.Close()
 

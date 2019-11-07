@@ -2,11 +2,11 @@ package gateway
 
 import (
 	"encoding/json"
-	"log"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/ItsJimi/casa-gateway/logger"
 	"github.com/ItsJimi/casa-gateway/utils"
 	"github.com/gorilla/websocket"
 )
@@ -35,15 +35,15 @@ func connectWebsocket(port string) {
 		var err error
 		ServerIP = utils.DiscoverServer()
 		if ServerIP == "" {
-			log.Printf("wait 5 seconds to redail...")
+			logger.WithFields(logger.Fields{}).Debugf("Wait 5 seconds to redail...")
 			time.Sleep(time.Second * 5)
 			continue
 		}
 		u := url.URL{Scheme: "ws", Host: ServerIP + ":" + utils.ServerPort, Path: "/v1/ws"}
 		WS, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
 		if err != nil {
-			log.Printf("dial err:" + err.Error())
-			log.Printf("wait 5 seconds to redail...")
+			logger.WithFields(logger.Fields{"code": "CGGWCCW001"}).Errorf("%s", err.Error())
+			logger.WithFields(logger.Fields{}).Debugf("Wait 5 seconds to redail...")
 			time.Sleep(time.Second * 5)
 			continue
 		}
@@ -58,9 +58,10 @@ func connectWebsocket(port string) {
 	byteMessage, _ := json.Marshal(message)
 	err := WS.WriteMessage(websocket.TextMessage, byteMessage)
 	if err != nil {
-		log.Println("write:", err)
+		logger.WithFields(logger.Fields{"code": "CGGWCCW002"}).Errorf("%s", err.Error())
 		return
 	}
+	logger.WithFields(logger.Fields{}).Debugf("Websocket connected!")
 }
 
 // StartWebsocketClient start a websocket client to send and receive data between casa server and casa gateway
@@ -72,7 +73,7 @@ func StartWebsocketClient(port string) {
 		for {
 			_, readMessage, err := WS.ReadMessage()
 			if err != nil {
-				log.Println("read:", err)
+				logger.WithFields(logger.Fields{"code": "CGGWCSWC001"}).Errorf("%s", err.Error())
 
 				// When read error is 1006, retry connection
 				if strings.Contains(err.Error(), "close 1006") {
@@ -85,7 +86,7 @@ func StartWebsocketClient(port string) {
 			var parsedMessage WebsocketMessage
 			err = json.Unmarshal(readMessage, &parsedMessage)
 			if err != nil {
-				log.Println("read:", err)
+				logger.WithFields(logger.Fields{"code": "CGGWCSWC002"}).Errorf("%s", err.Error())
 				continue
 			}
 
@@ -98,7 +99,7 @@ func StartWebsocketClient(port string) {
 				byteMessage, _ := json.Marshal(message)
 				err := WS.WriteMessage(websocket.TextMessage, byteMessage)
 				if err != nil {
-					log.Println("write:", err)
+					logger.WithFields(logger.Fields{"code": "CGGWCSWC003"}).Errorf("%s", err.Error())
 					return
 				}
 				break
@@ -106,7 +107,7 @@ func StartWebsocketClient(port string) {
 				var action ActionMessage
 				err = json.Unmarshal(parsedMessage.Body, &action)
 				if err != nil {
-					log.Println("read:", err)
+					logger.WithFields(logger.Fields{"code": "CGGWCSWC004"}).Errorf("%s", err.Error())
 					continue
 				}
 

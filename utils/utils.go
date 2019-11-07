@@ -128,8 +128,9 @@ func DiscoverServer() string {
 	}
 
 	var ip string
+
 	if len(ips) != 0 {
-		ip = ips[0]
+		ip = ips[len(ips)-1]
 	}
 
 	return ip
