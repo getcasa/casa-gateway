@@ -8,6 +8,7 @@ import (
 
 	"github.com/ItsJimi/casa-gateway/logger"
 	"github.com/ItsJimi/casa-gateway/utils"
+	"github.com/getcasa/sdk"
 	"github.com/gorilla/websocket"
 )
 
@@ -102,17 +103,42 @@ func StartWebsocketClient(port string) {
 					logger.WithFields(logger.Fields{"code": "CGGWCSWC003"}).Errorf("%s", err.Error())
 					return
 				}
-				break
+				continue
+			case "discoverDevices":
+				var discoveredDevices []sdk.Device
+				for _, localPlugin := range LocalPlugins {
+					if PluginFromName(localPlugin.Name) != nil && PluginFromName(localPlugin.Name).Discover != nil {
+						result := PluginFromName(localPlugin.Name).Discover()
+						for _, res := range result {
+							discoveredDevices = append(discoveredDevices, res)
+						}
+					}
+				}
+				marshDiscover, _ := json.Marshal(discoveredDevices)
+				message := WebsocketMessage{
+					Action: "discoverDevices",
+					Body:   marshDiscover,
+				}
+				byteMessage, _ := json.Marshal(message)
+				err := WS.WriteMessage(websocket.TextMessage, byteMessage)
+				if err != nil {
+					logger.WithFields(logger.Fields{"code": "CGGWCSWC004"}).Errorf("%s", err.Error())
+					return
+				}
+				continue
 			case "callAction":
 				var action ActionMessage
 				err = json.Unmarshal(parsedMessage.Body, &action)
 				if err != nil {
-					logger.WithFields(logger.Fields{"code": "CGGWCSWC004"}).Errorf("%s", err.Error())
+					logger.WithFields(logger.Fields{"code": "CGGWCSWC005"}).Errorf("%s", err.Error())
 					continue
 				}
 
-				PluginFromName(action.Plugin).CallAction(action.PhysicalID, action.Call, []byte(action.Params), []byte(action.Config))
-				break
+				if PluginFromName(action.Plugin) != nil && PluginFromName(action.Plugin).CallAction != nil {
+					logger.WithFields(logger.Fields{}).Errorf("Send action to plugin %s", action.Plugin)
+					PluginFromName(action.Plugin).CallAction(action.PhysicalID, action.Call, []byte(action.Params), []byte(action.Config))
+				}
+				continue
 			default:
 			}
 		}

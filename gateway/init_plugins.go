@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"plugin"
-	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -26,7 +25,8 @@ type LocalPlugin struct {
 	Init       func() []byte
 	OnStart    func([]byte)
 	OnStop     func()
-	OnData     func() interface{}
+	Discover   func() []sdk.Device
+	OnData     func() []sdk.Data
 	CallAction func(string, string, []byte, []byte)
 	Stop       bool
 }
@@ -70,75 +70,81 @@ func worker(localPlugin LocalPlugin) {
 		return
 	}
 
-	if localPlugin.OnData != nil {
-		res := localPlugin.OnData()
+	if localPlugin.OnData == nil {
+		go worker(localPlugin)
+		return
+	}
 
-		if res != nil {
-			physicalName := strings.ToLower(reflect.TypeOf(res).String()[strings.Index(reflect.TypeOf(res).String(), ".")+1:])
-			val := reflect.ValueOf(res).Elem()
-			id := val.FieldByName(utils.FindTriggerFromName(localPlugin.Config.Triggers, physicalName).FieldID).String()
+	res := localPlugin.OnData()
+
+	if res == nil || len(res) == 0 {
+		go worker(localPlugin)
+		return
+	}
+
+	for _, ressource := range res {
+		for _, field := range sdk.FindTriggerFromName(localPlugin.Config.Triggers, ressource.PhysicalName).Fields {
+			value := string(sdk.FindValueFromName(ressource.Values, field.Name).Value)
 
 			fmt.Println("------------")
-			fmt.Println(id)
-			fmt.Println(physicalName)
-			for j := 0; j < val.NumField(); j++ {
-				fmt.Println(val.Type().Field(j).Name)
-				fmt.Println(val.Field(j))
+			fmt.Println(ressource.PhysicalID)
+			fmt.Println(ressource.PhysicalName)
+			fmt.Println(field.Name)
+			fmt.Println(field.Type)
+			fmt.Println(value)
+			fmt.Println("------------")
+
+			if value == "" {
+				continue
 			}
-			fmt.Println("------------")
-
-			for i := 0; i < len(utils.FindTriggerFromName(localPlugin.Config.Triggers, physicalName).Fields); i++ {
-
-				field := utils.FindTriggerFromName(localPlugin.Config.Triggers, physicalName).Fields[i].Name
-				typeField := utils.FindTriggerFromName(localPlugin.Config.Triggers, physicalName).Fields[i].Type
-
-				if val.FieldByName(field).String() != "" {
-					queue := Datas{
-						ID:       utils.NewULID().String(),
-						DeviceID: id,
-						Field:    field,
-						ValueNbr: func() float64 {
-							if typeField == "int" {
-								nbr, err := strconv.ParseFloat(val.FieldByName(field).String(), 32)
-								if err != nil {
-									return 0
-								}
-								return nbr
-							}
+			queue := Datas{
+				ID:       utils.NewULID().String(),
+				DeviceID: ressource.PhysicalID,
+				Field:    field.Name,
+				ValueNbr: func() float64 {
+					if field.Type == "int" {
+						nbr, err := strconv.ParseFloat(value, 32)
+						if err != nil {
 							return 0
-						}(),
-						ValueStr: func() string {
-							if typeField == "string" {
-								return val.FieldByName(field).String()
-							}
-							return ""
-						}(),
-						ValueBool: func() bool {
-							if typeField == "bool" {
-								return val.FieldByName(field).Interface().(bool)
-							}
+						}
+						return nbr
+					}
+					return 0
+				}(),
+				ValueStr: func() string {
+					if field.Type == "string" {
+						return value
+					}
+					return ""
+				}(),
+				ValueBool: func() bool {
+					if field.Type == "bool" {
+						b, err := strconv.ParseBool(value)
+						if err != nil {
 							return false
-						}(),
+						}
+						return b
 					}
+					return false
+				}(),
+			}
 
-					// Send Websocket message to server
-					byteMessage, _ := json.Marshal(queue)
-					message := WebsocketMessage{
-						Action: "newData",
-						Body:   byteMessage,
-					}
-					byteMessage, _ = json.Marshal(message)
-					if WS == nil {
-						go worker(localPlugin)
-						return
-					}
-					err := WS.WriteMessage(websocket.TextMessage, byteMessage)
-					if err != nil {
-						logger.WithFields(logger.Fields{"code": "CGGIPW001"}).Errorf("%s", err.Error())
-						go worker(localPlugin)
-						return
-					}
-				}
+			// Send Websocket message to server
+			byteMessage, _ := json.Marshal(queue)
+			message := WebsocketMessage{
+				Action: "newData",
+				Body:   byteMessage,
+			}
+			byteMessage, _ = json.Marshal(message)
+			if WS == nil {
+				go worker(localPlugin)
+				return
+			}
+			err := WS.WriteMessage(websocket.TextMessage, byteMessage)
+			if err != nil {
+				logger.WithFields(logger.Fields{"code": "CGGIPW001"}).Errorf("%s", err.Error())
+				go worker(localPlugin)
+				return
 			}
 		}
 	}
@@ -199,7 +205,12 @@ func StartPlugins(port string) {
 
 			onData, err := plug.Lookup("OnData")
 			if err == nil {
-				LocalPlugins[i].OnData = onData.(func() interface{})
+				LocalPlugins[i].OnData = onData.(func() []sdk.Data)
+			}
+
+			discover, err := plug.Lookup("Discover")
+			if err == nil {
+				LocalPlugins[i].Discover = discover.(func() []sdk.Device)
 			}
 
 			callAction, err := plug.Lookup("CallAction")
