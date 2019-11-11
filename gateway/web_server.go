@@ -32,6 +32,20 @@ func StartWebServer(port string) {
 		})
 	})
 
+	v1.GET("/discover/:plugin", func(c echo.Context) error {
+		var discoveredDevices []sdk.Device
+		plugin := c.Param("plugin")
+
+		if PluginFromName(plugin) != nil && PluginFromName(plugin).Discover != nil {
+			result := PluginFromName(plugin).Discover()
+			for _, res := range result {
+				discoveredDevices = append(discoveredDevices, res)
+			}
+		}
+
+		return c.JSON(http.StatusOK, discoveredDevices)
+	})
+
 	v1.GET("/configs", func(c echo.Context) error {
 		var configs []sdk.Configuration
 		for _, localPlugin := range LocalPlugins {
