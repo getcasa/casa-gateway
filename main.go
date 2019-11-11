@@ -5,7 +5,6 @@ import (
 
 	"github.com/ItsJimi/casa-gateway/cmd"
 	"github.com/ItsJimi/casa-gateway/logger"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
