@@ -3,6 +3,7 @@ package gateway
 import (
 	"net/http"
 
+	"github.com/ItsJimi/casa-gateway/utils"
 	"github.com/getcasa/sdk"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
@@ -37,8 +38,10 @@ func StartWebServer(port string) {
 		plugin := c.Param("plugin")
 
 		if PluginFromName(plugin) != nil && PluginFromName(plugin).Discover != nil {
+			gatewayID := utils.GetIDFile()
 			result := PluginFromName(plugin).Discover()
 			for _, res := range result {
+				res.GatewayID = gatewayID
 				discoveredDevices = append(discoveredDevices, res)
 			}
 		}
