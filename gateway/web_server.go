@@ -34,7 +34,7 @@ func StartWebServer(port string) {
 	})
 
 	v1.GET("/discover/:plugin", func(c echo.Context) error {
-		var discoveredDevices []sdk.Device
+		var discoveredDevices []sdk.DiscoveredDevice
 		plugin := c.Param("plugin")
 
 		if PluginFromName(plugin) != nil && PluginFromName(plugin).Discover != nil {

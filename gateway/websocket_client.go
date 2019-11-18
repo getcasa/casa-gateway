@@ -108,3 +108,14 @@ func StartWebsocketClient(port string) {
 		}
 	}()
 }
+
+// PluginFromName return plugin from it name
+func PluginFromName(name string) *LocalPlugin {
+	for _, localPlugin := range LocalPlugins {
+		if localPlugin.Name == name {
+			return &localPlugin
+		}
+	}
+
+	return nil
+}

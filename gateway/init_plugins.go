@@ -25,7 +25,7 @@ type LocalPlugin struct {
 	Init       func() []byte
 	OnStart    func([]byte)
 	OnStop     func()
-	Discover   func() []sdk.Device
+	Discover   func() []sdk.DiscoveredDevice
 	OnData     func() []sdk.Data
 	CallAction func(string, string, []byte, []byte)
 	Stop       bool
@@ -34,6 +34,7 @@ type LocalPlugin struct {
 // LocalPlugins list all loaded plugins
 var LocalPlugins []LocalPlugin
 var wg sync.WaitGroup
+var ch chan []byte
 
 func findPluginFile() {
 	dir := "./plugins"
@@ -52,19 +53,7 @@ func findPluginFile() {
 	}
 }
 
-// PluginFromName return plugin from it name
-func PluginFromName(name string) *LocalPlugin {
-	for _, localPlugin := range LocalPlugins {
-		if localPlugin.Name == name {
-			return &localPlugin
-		}
-	}
-
-	return nil
-}
-
 func worker(localPlugin LocalPlugin) {
-
 	if localPlugin.Stop == true {
 		wg.Done()
 		return
@@ -77,79 +66,85 @@ func worker(localPlugin LocalPlugin) {
 
 	res := localPlugin.OnData()
 
-	if res == nil || len(res) == 0 {
-		go worker(localPlugin)
-		return
-	}
+	go func(res []sdk.Data) {
+		if res == nil || len(res) == 0 {
+			return
+		}
 
-	for _, ressource := range res {
-		for _, field := range sdk.FindTriggerFromName(localPlugin.Config.Triggers, ressource.PhysicalName).Fields {
-			value := string(sdk.FindValueFromName(ressource.Values, field.Name).Value)
+		for _, ressource := range res {
+			for _, field := range sdk.FindDevicesFromName(localPlugin.Config.Devices, ressource.PhysicalName).Triggers {
+				value := string(sdk.FindValueFromName(ressource.Values, field.Name).Value)
 
-			fmt.Println("------------")
-			fmt.Println(ressource.PhysicalID)
-			fmt.Println(ressource.PhysicalName)
-			fmt.Println(field.Name)
-			fmt.Println(field.Type)
-			fmt.Println(value)
-			fmt.Println("------------")
+				fmt.Println("------------")
+				fmt.Println(ressource.PhysicalID)
+				fmt.Println(ressource.PhysicalName)
+				fmt.Println(field.Name)
+				fmt.Println(field.Type)
+				fmt.Println(value)
+				fmt.Println("------------")
 
-			if value == "" {
-				continue
-			}
-			queue := Datas{
-				ID:       utils.NewULID().String(),
-				DeviceID: ressource.PhysicalID,
-				Field:    field.Name,
-				ValueNbr: func() float64 {
-					if field.Type == "int" {
-						nbr, err := strconv.ParseFloat(value, 32)
-						if err != nil {
-							return 0
+				if value == "" {
+					continue
+				}
+				queue := Datas{
+					ID:       utils.NewULID().String(),
+					DeviceID: ressource.PhysicalID,
+					Field:    field.Name,
+					ValueNbr: func() float64 {
+						if field.Type == "int" {
+							nbr, err := strconv.ParseFloat(value, 32)
+							if err != nil {
+								return 0
+							}
+							return nbr
 						}
-						return nbr
-					}
-					return 0
-				}(),
-				ValueStr: func() string {
-					if field.Type == "string" {
-						return value
-					}
-					return ""
-				}(),
-				ValueBool: func() bool {
-					if field.Type == "bool" {
-						b, err := strconv.ParseBool(value)
-						if err != nil {
-							return false
+						return 0
+					}(),
+					ValueStr: func() string {
+						if field.Type == "string" {
+							return value
 						}
-						return b
-					}
-					return false
-				}(),
-			}
+						return ""
+					}(),
+					ValueBool: func() bool {
+						if field.Type == "bool" {
+							b, err := strconv.ParseBool(value)
+							if err != nil {
+								return false
+							}
+							return b
+						}
+						return false
+					}(),
+				}
 
-			// Send Websocket message to server
-			byteMessage, _ := json.Marshal(queue)
-			message := WebsocketMessage{
-				Action: "newData",
-				Body:   byteMessage,
-			}
-			byteMessage, _ = json.Marshal(message)
-			if WS == nil {
-				go worker(localPlugin)
-				return
-			}
-			err := WS.WriteMessage(websocket.TextMessage, byteMessage)
-			if err != nil {
-				logger.WithFields(logger.Fields{"code": "CGGIPW001"}).Errorf("%s", err.Error())
-				go worker(localPlugin)
-				return
+				// Send Websocket message to server
+				byteMessage, _ := json.Marshal(queue)
+				message := WebsocketMessage{
+					Action: "newData",
+					Body:   byteMessage,
+				}
+				byteMessage, _ = json.Marshal(message)
+
+				ch <- byteMessage
+
 			}
 		}
-	}
 
+	}(res)
 	go worker(localPlugin)
+}
+
+func writeMessage() {
+	byteMessage := <-ch
+	if WS == nil {
+		return
+	}
+	err := WS.WriteMessage(websocket.TextMessage, byteMessage)
+	if err != nil {
+		logger.WithFields(logger.Fields{"code": "CGGIPW001"}).Errorf("%s", err.Error())
+	}
+	writeMessage()
 }
 
 // StartPlugins load plugins
@@ -210,7 +205,7 @@ func StartPlugins(port string) {
 
 			discover, err := plug.Lookup("Discover")
 			if err == nil {
-				LocalPlugins[i].Discover = discover.(func() []sdk.Device)
+				LocalPlugins[i].Discover = discover.(func() []sdk.DiscoveredDevice)
 			}
 
 			callAction, err := plug.Lookup("CallAction")
@@ -251,6 +246,9 @@ func StartPlugins(port string) {
 
 	// Start websocket client
 	StartWebsocketClient(port)
+
+	ch = make(chan []byte)
+	go writeMessage()
 
 	// Start plugins workers to get data
 	for _, localPlugin := range LocalPlugins {
