@@ -151,10 +151,9 @@ func writeMessage() {
 func StartPlugins(port string) {
 	findPluginFile()
 
-	start := time.Now()
 	wg.Add(len(LocalPlugins))
 
-	for range time.Tick(5 * time.Second) {
+	for range time.Tick(2 * time.Second) {
 		ServerIP = utils.DiscoverServer()
 		if ServerIP == "" {
 			logger.WithFields(logger.Fields{}).Debugf("Casa server not found, searching...")
@@ -241,8 +240,6 @@ func StartPlugins(port string) {
 		}(i)
 	}
 	wg.Wait()
-	t := time.Now()
-	logger.WithFields(logger.Fields{}).Debugf("Start Plugin Time - %s", t.Sub(start))
 
 	// Start websocket client
 	StartWebsocketClient(port)
