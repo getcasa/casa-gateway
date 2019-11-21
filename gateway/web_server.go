@@ -1,8 +1,10 @@
 package gateway
 
 import (
+	"fmt"
 	"net/http"
 
+	"github.com/ItsJimi/casa-gateway/logger"
 	"github.com/ItsJimi/casa-gateway/utils"
 	"github.com/getcasa/sdk"
 	"github.com/labstack/echo"
@@ -36,6 +38,18 @@ func StartWebServer(port string) {
 	v1.GET("/discover/:plugin", func(c echo.Context) error {
 		var discoveredDevices []sdk.DiscoveredDevice
 		plugin := c.Param("plugin")
+
+		if PluginFromName(plugin) != nil && PluginFromName(plugin).UpdateConfig != nil {
+			statusCode, pluginConf := GetPlugin(PluginFromName(plugin).Name)
+
+			if statusCode != 200 && statusCode != 404 {
+				logger.WithFields(logger.Fields{"code": "CGGWSDP001"}).Errorf("Can't get plugin from casa server")
+				return c.JSON(http.StatusOK, discoveredDevices)
+			}
+			fmt.Println("Update the config of plugin " + PluginFromName(plugin).Name)
+			pluginConf.Config = string(PluginFromName(plugin).UpdateConfig([]byte(pluginConf.Config)))
+			AddPlugin(pluginConf)
+		}
 
 		if PluginFromName(plugin) != nil && PluginFromName(plugin).Discover != nil {
 			gatewayID := utils.GetIDFile()

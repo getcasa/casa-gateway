@@ -19,16 +19,17 @@ import (
 
 // LocalPlugin define structure of plugin
 type LocalPlugin struct {
-	Name       string
-	File       string
-	Config     *sdk.Configuration
-	Init       func() []byte
-	OnStart    func([]byte)
-	OnStop     func()
-	Discover   func() []sdk.DiscoveredDevice
-	OnData     func() []sdk.Data
-	CallAction func(string, string, []byte, []byte)
-	Stop       bool
+	Name         string
+	File         string
+	Config       *sdk.Configuration
+	Init         func() []byte
+	OnStart      func([]byte)
+	OnStop       func()
+	UpdateConfig func([]byte) []byte
+	Discover     func() []sdk.DiscoveredDevice
+	OnData       func() []sdk.Data
+	CallAction   func(string, string, []byte, []byte)
+	Stop         bool
 }
 
 // LocalPlugins list all loaded plugins
@@ -67,6 +68,7 @@ func worker(localPlugin LocalPlugin) {
 	res := localPlugin.OnData()
 
 	go func(res []sdk.Data) {
+		var queues []Datas
 		if res == nil || len(res) == 0 {
 			return
 		}
@@ -74,6 +76,10 @@ func worker(localPlugin LocalPlugin) {
 		for _, ressource := range res {
 			for _, field := range sdk.FindDevicesFromName(localPlugin.Config.Devices, ressource.PhysicalName).Triggers {
 				value := string(sdk.FindValueFromName(ressource.Values, field.Name).Value)
+
+				if value == "" {
+					continue
+				}
 
 				fmt.Println("------------")
 				fmt.Println(ressource.PhysicalID)
@@ -83,9 +89,6 @@ func worker(localPlugin LocalPlugin) {
 				fmt.Println(value)
 				fmt.Println("------------")
 
-				if value == "" {
-					continue
-				}
 				queue := Datas{
 					ID:       utils.NewULID().String(),
 					DeviceID: ressource.PhysicalID,
@@ -118,33 +121,33 @@ func worker(localPlugin LocalPlugin) {
 					}(),
 				}
 
-				// Send Websocket message to server
-				byteMessage, _ := json.Marshal(queue)
-				message := WebsocketMessage{
-					Action: "newData",
-					Body:   byteMessage,
-				}
-				byteMessage, _ = json.Marshal(message)
-
-				ch <- byteMessage
-
+				queues = append(queues, queue)
 			}
 		}
+
+		// Send Websocket message to server
+		byteMessage, _ := json.Marshal(queues)
+		message := WebsocketMessage{
+			Action: "newData",
+			Body:   byteMessage,
+		}
+		byteMessage, _ = json.Marshal(message)
+
+		ch <- byteMessage
 
 	}(res)
 	go worker(localPlugin)
 }
 
 func writeMessage() {
-	byteMessage := <-ch
+	defer writeMessage()
 	if WS == nil {
 		return
 	}
-	err := WS.WriteMessage(websocket.TextMessage, byteMessage)
+	err := WS.WriteMessage(websocket.TextMessage, <-ch)
 	if err != nil {
 		logger.WithFields(logger.Fields{"code": "CGGIPW001"}).Errorf("%s", err.Error())
 	}
-	writeMessage()
 }
 
 // StartPlugins load plugins
@@ -173,7 +176,7 @@ func StartPlugins(port string) {
 
 			conf, err := plug.Lookup("Config")
 			if err != nil {
-				logger.WithFields(logger.Fields{"code": "CGGIPSP001"}).Errorf("%s", err.Error())
+				logger.WithFields(logger.Fields{"code": "CGGIPSP002"}).Errorf("%s", err.Error())
 				os.Exit(1)
 			}
 			LocalPlugins[i].Config = conf.(*sdk.Configuration)
@@ -183,16 +186,21 @@ func StartPlugins(port string) {
 				LocalPlugins[i].Init = init.(func() []byte)
 			}
 
+			updateConfig, err := plug.Lookup("UpdateConfig")
+			if err == nil {
+				LocalPlugins[i].UpdateConfig = updateConfig.(func([]byte) []byte)
+			}
+
 			onStart, err := plug.Lookup("OnStart")
 			if err != nil {
-				logger.WithFields(logger.Fields{"code": "CGGIPSP001"}).Errorf("%s", err.Error())
+				logger.WithFields(logger.Fields{"code": "CGGIPSP003"}).Errorf("%s", err.Error())
 				os.Exit(1)
 			}
 			LocalPlugins[i].OnStart = onStart.(func([]byte))
 
 			onStop, err := plug.Lookup("OnStop")
 			if err != nil {
-				logger.WithFields(logger.Fields{"code": "CGGIPSP002"}).Errorf("%s", err.Error())
+				logger.WithFields(logger.Fields{"code": "CGGIPSP004"}).Errorf("%s", err.Error())
 				os.Exit(1)
 			}
 			LocalPlugins[i].OnStop = onStop.(func())
