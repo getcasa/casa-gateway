@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/ItsJimi/casa-gateway/gateway"
 	"github.com/spf13/cobra"
 )
@@ -17,6 +19,10 @@ var startCmd = &cobra.Command{
 		port := "3000"
 		if len(args) > 0 {
 			port = args[0]
+		}
+
+		if os.Getenv("CASA_SERVER_PORT") == "" {
+			os.Setenv("CASA_SERVER_PORT", "4353")
 		}
 
 		go gateway.StartPlugins(port)

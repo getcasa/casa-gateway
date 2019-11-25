@@ -3,6 +3,7 @@ package gateway
 import (
 	"encoding/json"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -39,7 +40,7 @@ func connectWebsocket(port string) {
 			time.Sleep(time.Second * 5)
 			continue
 		}
-		u := url.URL{Scheme: "ws", Host: ServerIP + ":" + utils.ServerPort, Path: "/v1/ws"}
+		u := url.URL{Scheme: "ws", Host: ServerIP + ":" + os.Getenv("CASA_SERVER_PORT"), Path: "/v1/ws"}
 		WS, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
 		if err != nil {
 			logger.WithFields(logger.Fields{"code": "CGGWCCW001"}).Errorf("%s", err.Error())

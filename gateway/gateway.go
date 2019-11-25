@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/ItsJimi/casa-gateway/logger"
 	"github.com/ItsJimi/casa-gateway/utils"
@@ -25,7 +26,7 @@ func RegisterGateway() {
 		"id": utils.GetIDFile(),
 	})
 	utils.Check(err, "error")
-	resp, err := http.Post("http://"+ip+":"+utils.ServerPort+"/v1/gateway", "application/json", bytes.NewReader(data))
+	resp, err := http.Post("http://"+ip+":"+os.Getenv("CASA_SERVER_PORT")+"/v1/gateway", "application/json", bytes.NewReader(data))
 	if err != nil {
 		logger.WithFields(logger.Fields{"code": "CGGGRG002"}).Errorf("%s", err.Error())
 		return
@@ -42,7 +43,7 @@ func RegisterGateway() {
 
 // GetPlugin retrieve a plugin from Casa server
 func GetPlugin(pluginName string) (int, Plugin) {
-	res, err := http.Get("http://" + ServerIP + ":" + utils.ServerPort + "/v1/gateway/" + utils.GetIDFile() + "/plugins/" + pluginName)
+	res, err := http.Get("http://" + ServerIP + ":" + os.Getenv("CASA_SERVER_PORT") + "/v1/gateway/" + utils.GetIDFile() + "/plugins/" + pluginName)
 	if err != nil {
 		logger.WithFields(logger.Fields{"code": "CGGGGP001"}).Errorf("%s", err.Error())
 	}
@@ -72,7 +73,7 @@ func AddPlugin(plugin Plugin) int {
 		return 0
 	}
 
-	res, err := http.Post("http://"+ServerIP+":"+utils.ServerPort+"/v1/gateway/"+utils.GetIDFile()+"/plugins", "application/json", bytes.NewReader(bytePlugin))
+	res, err := http.Post("http://"+ServerIP+":"+os.Getenv("CASA_SERVER_PORT")+"/v1/gateway/"+utils.GetIDFile()+"/plugins", "application/json", bytes.NewReader(bytePlugin))
 	if err != nil {
 		logger.WithFields(logger.Fields{"code": "CGGGAP001"}).Errorf("%s", err.Error())
 	}

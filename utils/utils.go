@@ -79,9 +79,6 @@ func containIPAddress(arr []string, search string) bool {
 
 var waitg sync.WaitGroup
 
-// ServerPort is the default port use by casa server
-const ServerPort = "4353"
-
 // DiscoverServer get ips of casa servers
 func DiscoverServer() string {
 	var ips []string
@@ -111,7 +108,7 @@ func DiscoverServer() string {
 				go func(i int, ipAddr string) {
 					ip := ipAddr + strconv.Itoa(i)
 					ps := portscanner.NewPortScanner(ip, 3*time.Second, 4)
-					port, err := strconv.Atoi(ServerPort)
+					port, err := strconv.Atoi(os.Getenv("CASA_SERVER_PORT"))
 					if err != nil {
 						log.Error(err)
 						return
