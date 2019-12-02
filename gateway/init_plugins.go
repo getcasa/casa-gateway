@@ -125,6 +125,10 @@ func worker(localPlugin LocalPlugin) {
 			}
 		}
 
+		if len(queues) == 0 {
+			return
+		}
+
 		// Send Websocket message to server
 		byteMessage, _ := json.Marshal(queues)
 		message := WebsocketMessage{
