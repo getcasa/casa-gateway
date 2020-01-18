@@ -146,11 +146,12 @@ func worker(localPlugin LocalPlugin) {
 func writeMessage() {
 	defer writeMessage()
 	if WS == nil {
+		logger.WithFields(logger.Fields{"code": "CGGIPW001"}).Errorf("%s", "Websocket is dead")
 		return
 	}
 	err := WS.WriteMessage(websocket.TextMessage, <-ch)
 	if err != nil {
-		logger.WithFields(logger.Fields{"code": "CGGIPW001"}).Errorf("%s", err.Error())
+		logger.WithFields(logger.Fields{"code": "CGGIPW002"}).Errorf("%s", err.Error())
 	}
 }
 

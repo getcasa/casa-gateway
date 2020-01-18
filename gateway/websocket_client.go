@@ -77,7 +77,7 @@ func StartWebsocketClient(port string) {
 				logger.WithFields(logger.Fields{"code": "CGGWCSWC001"}).Errorf("%s", err.Error())
 
 				// When read error is 1006, retry connection
-				if strings.Contains(err.Error(), "close 1006") {
+				if strings.Contains(err.Error(), "close 1006") || strings.Contains(err.Error(), "reset by peer") {
 					connectWebsocket(port)
 					continue
 				}
@@ -105,6 +105,7 @@ func StartWebsocketClient(port string) {
 				}
 				continue
 			default:
+				continue
 			}
 		}
 	}()
