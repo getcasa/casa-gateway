@@ -4,14 +4,32 @@ Casa-gateway is here to connect devices together and get all datas to send it to
 
 ## Build
 
-To build with plugins, you need to compile it in plugin mode and build casa-gateway with plugins compiled lib. 
+To build with plugins, you need to compile it in plugin mode and build casa-gateway with plugins compiled lib.
 
 ### arm64 (nas synology)
+
 ```
 sudo env CGO_ENABLED=1 GOOS=linux GOARCH=arm64 CC=aarch64-linux-gnu-gcc go build -o casa-gateway *.go
 ```
 
 ### amd64
+
 ```
 go build -o casa-gateway *.go
+```
+
+## Launch
+
+- You need a launched casa-server to connect our casa-gateway (https://github.com/getcasa/casa)
+- Set env variable 'CASA_SERVER_PORT', check casa-server to set good value (default 4353)
+- Init gateway
+
+```
+./casa-gateway init
+```
+
+- Start gateway
+
+```
+./casa-gateway start
 ```
